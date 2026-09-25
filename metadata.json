@@ -1,0 +1,6 @@
+{
+  "name": "CineStream - Streaming Platform",
+  "description": "A production-grade cinematic streaming platform featuring curated movies, TV series, interactive media previews, watchlist synchronization, and full-featured playback.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
