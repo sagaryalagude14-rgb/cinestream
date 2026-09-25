@@ -35,7 +35,365 @@ interface CaptionCue {
   translations: Record<string, string>;
 }
 
-const SUBTITLE_CUES: CaptionCue[] = [
+const TRAILER_SUBTITLES: Record<string, CaptionCue[]> = {
+  // Interstellar (trailerKey: 'zSWdZVtXT7E') - Synchronized with official audio
+  zSWdZVtXT7E: [
+    {
+      start: 1,
+      end: 6,
+      translations: {
+        'English [CC]': '[Soft acoustic guitar strumming, clock ticking rhythmically]',
+        Spanish: '[Guitarra acústica melancólica rasgueando suavemente]',
+        French: '[Guitare acoustique mélancolique, tic-tac régulier]',
+        German: '[Sanfte Akustikgitarre, rhythmisches Uhrenticken]',
+      },
+    },
+    {
+      start: 7,
+      end: 14,
+      translations: {
+        'English [CC]': 'Cooper: "We used to look up at the sky and wonder at our place in the stars..."',
+        Spanish: 'Cooper: "Solíamos mirar al cielo y preguntarnos por nuestro lugar en las estrellas..."',
+        French: 'Cooper: "On avait l\'habitude de lever les yeux au ciel et de contempler les étoiles..."',
+        German: 'Cooper: "Früher blickten wir zum Himmel und fragten uns nach unserem Platz..."',
+      },
+    },
+    {
+      start: 15,
+      end: 22,
+      translations: {
+        'English [CC]': 'Cooper: "...now we just look down and worry about our place in the dirt."',
+        Spanish: 'Cooper: "...ahora solo miramos abajo, preocupados por nuestro lugar en la tierra."',
+        French: 'Cooper: "...maintenant nous baissons les yeux, inquiets de notre place dans la poussière."',
+        German: 'Cooper: "...heute schauen wir nach unten und sorgen uns um unseren Platz im Staub."',
+      },
+    },
+    {
+      start: 23,
+      end: 30,
+      translations: {
+        'English [CC]': '[Dust sirens wailing across the barren cornfields]',
+        Spanish: '[Sirenas de tormenta de polvo resuenan a lo lejos]',
+        French: '[Sirènes de tempête de poussière dans les champs]',
+        German: '[Staubsturmsirenen heulen über die vertrockneten Felder]',
+      },
+    },
+    {
+      start: 31,
+      end: 38,
+      translations: {
+        'English [CC]': 'Professor Brand: "We\'re not meant to save the world. We\'re meant to leave it."',
+        Spanish: 'Profesor Brand: "No estamos destinados a salvar el mundo. Debemos dejarlo."',
+        French: 'Professeur Brand: "Nous ne sommes pas faits pour sauver le monde. Nous devons le quitter."',
+        German: 'Professor Brand: "Wir sind nicht dazu bestimmt, die Welt zu retten, sondern sie zu verlassen."',
+      },
+    },
+    {
+      start: 39,
+      end: 47,
+      translations: {
+        'English [CC]': 'Cooper: "I got kids, Professor." / Brand: "Then go out there and save them."',
+        Spanish: 'Cooper: "Tengo hijos, profesor." / Brand: "Entonces ve allá afuera y sálvalos."',
+        French: 'Cooper: "J\'ai des enfants, professeur." / Brand: "Alors partez là-haut et sauvez-les."',
+        German: 'Cooper: "Ich habe Kinder, Professor." / Brand: "Dann fliegen Sie hinauf und retten Sie sie."',
+      },
+    },
+    {
+      start: 48,
+      end: 55,
+      translations: {
+        'English [CC]': 'Cooper: "We must reach far beyond our own lifelines."',
+        Spanish: 'Cooper: "Debemos llegar mucho más allá de nuestras propias vidas."',
+        French: 'Cooper: "Nous devons aller bien au-delà de nos propres vies."',
+        German: 'Cooper: "Wir müssen weit über unsere eigene Lebensspanne hinausgehen."',
+      },
+    },
+    {
+      start: 56,
+      end: 68,
+      translations: {
+        'English [CC]': 'Professor Brand: "Do not go gentle into that good night... Rage, rage against the dying of the light."',
+        Spanish: 'Profesor Brand: "No entres dócil en esa buena noche... Enfurece contra la agonía de la luz."',
+        French: 'Professeur Brand: "N\'entre pas sans violence dans cette douce nuit... Enrage contre la mort de la lumière."',
+        German: 'Professor Brand: "Geh nicht gelassen in die gute Nacht... Wüte gegen das Verlöschen des Lichts."',
+      },
+    },
+    {
+      start: 69,
+      end: 78,
+      translations: {
+        'English [CC]': '[Saturn V rocket boosters ignite with a thundering roar]',
+        Spanish: '[Los propulsores del cohete Saturno V se encienden con estruendo]',
+        French: '[Les propulseurs de la fusée Saturn V grondent avec force]',
+        German: '[Raketentriebwerke der Saturn V zünden mit ohrenbetäubendem Donnern]',
+      },
+    },
+    {
+      start: 79,
+      end: 88,
+      translations: {
+        'English [CC]': 'Dr. Amelia Brand: "We must think not as individuals, but as a species."',
+        Spanish: 'Dra. Amelia Brand: "No debemos pensar como individuos, sino como especie."',
+        French: 'Dr. Amelia Brand: "Nous devons penser non pas comme des individus, mais comme une espèce."',
+        German: 'Dr. Amelia Brand: "Wir müssen nicht als Individuen denken, sondern als Spezies."',
+      },
+    },
+    {
+      start: 89,
+      end: 98,
+      translations: {
+        'English [CC]': 'Cooper: "We\'ll find a way, Professor. We always have."',
+        Spanish: 'Cooper: "Encontraremos la forma, profesor. Siempre lo hemos hecho."',
+        French: 'Cooper: "Nous trouverons un moyen, professeur. Nous l\'avons toujours fait."',
+        German: 'Cooper: "Wir finden einen Weg, Professor. Das haben wir immer getan."',
+      },
+    },
+    {
+      start: 99,
+      end: 110,
+      translations: {
+        'English [CC]': '[Hans Zimmer\'s organ theme swells to a stirring crescendo]',
+        Spanish: '[El tema de órgano de Hans Zimmer alcanza un crescendo conmovedor]',
+        French: '[Le thème d\'orgue de Hans Zimmer monte en puissance]',
+        German: '[Hans Zimmers Orgel-Thema schwillt zu einem ergreifenden Crescendo an]',
+      },
+    },
+    {
+      start: 111,
+      end: 135,
+      translations: {
+        'English [CC]': '[Endurance spacecraft enters the gargantuan gravitational lensing of the wormhole]',
+        Spanish: '[La nave espacial Endurance entra en el campo gravitatorio del agujero de gusano]',
+        French: '[Le vaisseau Endurance franchit le vortex gravitationnel du trou de ver]',
+        German: '[Das Raumschiff Endurance durchquert die Gravitationslinse des Wurmlochs]',
+      },
+    },
+  ],
+
+  // Oppenheimer (trailerKey: 'uYPbbksJxIg')
+  uYPbbksJxIg: [
+    {
+      start: 2,
+      end: 8,
+      translations: {
+        'English [CC]': '[Pulsing orchestral heartbeat and radioactive Geiger counter clicks]',
+        Spanish: '[Latido orquestal pulsante y chasquidos de contador Geiger]',
+        French: '[Pulsations orchestrales et cliquetis de compteur Geiger]',
+        German: '[Pulsierender Orchester-Herzschlag und Ticken des Geigerzählers]',
+      },
+    },
+    {
+      start: 9,
+      end: 18,
+      translations: {
+        'English [CC]': 'Oppenheimer: "We imagine a future, and our imaginings horrify us."',
+        Spanish: 'Oppenheimer: "Imaginamos un futuro, y nuestras imaginaciones nos horrorizan."',
+        French: 'Oppenheimer: "Nous imaginons un avenir, et nos visions nous horrifies."',
+        German: 'Oppenheimer: "Wir stellen uns eine Zukunft vor, und unsere Vorstellungen entsetzen uns."',
+      },
+    },
+    {
+      start: 19,
+      end: 27,
+      translations: {
+        'English [CC]': 'Oppenheimer: "They won\'t fear it until they understand it..."',
+        Spanish: 'Oppenheimer: "No lo temerán hasta que lo entiendan..."',
+        French: 'Oppenheimer: "Ils n\'en auront pas peur tant qu\'ils ne le comprendront pas..."',
+        German: 'Oppenheimer: "Sie werden es nicht fürchten, bis sie es verstehen..."',
+      },
+    },
+    {
+      start: 28,
+      end: 36,
+      translations: {
+        'English [CC]': 'Oppenheimer: "...and they won\'t understand it until they\'ve used it."',
+        Spanish: 'Oppenheimer: "...y no lo entenderán hasta que lo hayan usado."',
+        French: 'Oppenheimer: "...et ils ne le comprendront pas tant qu\'ils ne l\'auront pas utilisé."',
+        German: 'Oppenheimer: "...und sie werden es nicht verstehen, bis sie es eingesetzt haben."',
+      },
+    },
+    {
+      start: 37,
+      end: 46,
+      translations: {
+        'English [CC]': 'Lewis Strauss: "Theory will take you only so far, Robert."',
+        Spanish: 'Lewis Strauss: "La teoría solo te llevará hasta cierto punto, Robert."',
+        French: 'Lewis Strauss: "La théorie ne vous mènera que jusqu\'à un certain point, Robert."',
+        German: 'Lewis Strauss: "Die Theorie bringt einen nur bis zu einem gewissen Punkt, Robert."',
+      },
+    },
+    {
+      start: 47,
+      end: 58,
+      translations: {
+        'English [CC]': '[Ludwig Göransson violin tempo accelerates rapidly]',
+        Spanish: '[El tempo de los violines de Ludwig Göransson se acelera vertiginosamente]',
+        French: '[Le tempo des violons s\'accélère vivement]',
+        German: '[Das Geigentempo beschleunigt sich rasant]',
+      },
+    },
+    {
+      start: 59,
+      end: 70,
+      translations: {
+        'English [CC]': 'Oppenheimer: "Is anyone ever going to tell the truth about what\'s happening here?"',
+        Spanish: 'Oppenheimer: "¿Alguien va a decir la verdad sobre lo que está pasando aquí?"',
+        French: 'Oppenheimer: "Quelqu\'un dira-t-il un jour la vérité sur ce qui se passe ici ?"',
+        German: 'Oppenheimer: "Wird jemals jemand die Wahrheit darüber sagen, was hier geschieht?"',
+      },
+    },
+    {
+      start: 71,
+      end: 85,
+      translations: {
+        'English [CC]': '[Final countdown protocol initiated across Trinity test site bunker]',
+        Spanish: '[Protocolo de cuenta regresiva final iniciado en el búnker de pruebas Trinity]',
+        French: '[Protocole de compte à rebours final enclenché dans le bunker]',
+        German: '[Finales Countdown-Protokoll am Testgelände Trinity gestartet]',
+      },
+    },
+  ],
+
+  // Dune: Part Two (trailerKey: 'Way9Dexny3w')
+  Way9Dexny3w: [
+    {
+      start: 1,
+      end: 7,
+      translations: {
+        'English [CC]': '[Wind howling across the shifting dunes of Arrakis]',
+        Spanish: '[El viento aúlla sobre las dunas ondulantes de Arrakis]',
+        French: '[Le vent hurle sur les dunes ondoyantes d\'Arrakis]',
+        German: '[Der Wüstenwind heult über die Dünen von Arrakis]',
+      },
+    },
+    {
+      start: 8,
+      end: 18,
+      translations: {
+        'English [CC]': 'Princess Irulan: "In the shadows of Arrakis lie many secrets..."',
+        Spanish: 'Princesa Irulan: "En las sombras de Arrakis yacen muchos secretos..."',
+        French: 'Princesse Irulan: "Dans les ombres d\'Arrakis se cachent de nombreux secrets..."',
+        German: 'Prinzessin Irulan: "In den Schatten von Arrakis liegen viele Geheimnisse..."',
+      },
+    },
+    {
+      start: 19,
+      end: 28,
+      translations: {
+        'English [CC]': 'Paul Atreides: "Your father didn\'t believe in revenge." / Chani: "I do."',
+        Spanish: 'Paul Atreides: "Tu padre no creía en la venganza." / Chani: "Yo sí."',
+        French: 'Paul Atreides: "Ton père ne croyait pas en la vengeance." / Chani: "Moi si."',
+        German: 'Paul Atreides: "Dein Vater glaubte nicht an Rache." / Chani: "Ich schon."',
+      },
+    },
+    {
+      start: 29,
+      end: 39,
+      translations: {
+        'English [CC]': '[Crysknife unsheathed with a metallic hum]',
+        Spanish: '[Cuchillo Crys desenvainado con un zumbido metálico]',
+        French: '[Lame de crys dégainée dans un bourdonnement]',
+        German: '[Krysmesser mit metallischem Summen gezogen]',
+      },
+    },
+    {
+      start: 40,
+      end: 50,
+      translations: {
+        'English [CC]': 'Paul: "He who can destroy a thing, controls a thing."',
+        Spanish: 'Paul: "Aquel que puede destruir una cosa, la controla."',
+        French: 'Paul: "Celui qui peut détruire une chose la contrôle."',
+        German: 'Paul: "Wer etwas zerstören kann, der beherrscht es auch."',
+      },
+    },
+    {
+      start: 51,
+      end: 62,
+      translations: {
+        'English [CC]': 'Paul: "May thy knife chip and shatter!"',
+        Spanish: 'Paul: "¡Que tu cuchillo se melle y se haga pedazos!"',
+        French: 'Paul: "Que ta lame s\'ébrèche et se brise !"',
+        German: 'Paul: "Möge deine Klinge splittern und zerbrechen!"',
+      },
+    },
+    {
+      start: 63,
+      end: 80,
+      translations: {
+        'English [CC]': '[Colossal Shai-Hulud sandworm breaches through the blinding sandstorm]',
+        Spanish: '[El colosal gusano de arena Shai-Hulud emerge a través de la tormenta]',
+        French: '[Le ver des sables géant Shai-Hulud jaillit de la tempête de sable]',
+        German: '[Der kolossale Sandwurm Shai-Hulud bricht durch den Sandsturm]',
+      },
+    },
+  ],
+
+  // Cyberpunk: Edgerunners (trailerKey: 'JtqIas3bYhg')
+  JtqIas3bYhg: [
+    {
+      start: 2,
+      end: 8,
+      translations: {
+        'English [CC]': '[Heavy synthwave bass and neon neon flickering]',
+        Spanish: '[Bajo synthwave contundente y luces de neón parpadeantes]',
+        French: '[Basse synthwave rythmée et néons vacillants]',
+        German: '[Wummernder Synthwave-Bass und flackernde Neonlichter]',
+      },
+    },
+    {
+      start: 9,
+      end: 18,
+      translations: {
+        'English [CC]': 'David Martinez: "I ain\'t gonna die here in the gutters of Santo Domingo."',
+        Spanish: 'David Martinez: "No voy a morir en las alcantarillas de Santo Domingo."',
+        French: 'David Martinez: "Je ne vais pas crever dans les caniveaux de Santo Domingo."',
+        German: 'David Martinez: "Ich werde nicht in den Gossen von Santo Domingo sterben."',
+      },
+    },
+    {
+      start: 19,
+      end: 28,
+      translations: {
+        'English [CC]': 'Lucy: "Night City always wins, David. It takes everything you have."',
+        Spanish: 'Lucy: "Night City siempre gana, David. Te quita todo lo que tienes."',
+        French: 'Lucy: "Night City gagne toujours, David. Elle te prend tout ce que tu as."',
+        German: 'Lucy: "Night City gewinnt immer, David. Es nimmt dir alles, was du hast."',
+      },
+    },
+    {
+      start: 29,
+      end: 39,
+      translations: {
+        'English [CC]': 'Maine: "You got military cyberware in your spine, kid. Keep your head on."',
+        Spanish: 'Maine: "Tienes ciberware militar en tu columna, chico. Mantén la calma."',
+        French: 'Maine: "Tu as du matériel militaire dans la colonne vertébrale, gamin."',
+        German: 'Maine: "Du hast Militär-Cyberware im Rückgrat, Junge. Behalt die Nerven."',
+      },
+    },
+    {
+      start: 40,
+      end: 52,
+      translations: {
+        'English [CC]': '[Sandevistan cyberware accelerates time in optical color blur]',
+        Spanish: '[El ciberimplante Sandevistan acelera el tiempo con distorsión óptica]',
+        French: '[L\'implant Sandevistan accélère le temps dans un flou optique]',
+        German: '[Sandevistan beschleunigt die Zeit mit optischen Verzerrungen]',
+      },
+    },
+    {
+      start: 53,
+      end: 65,
+      translations: {
+        'English [CC]': 'David: "I\'ll take you to the moon, Lucy. I promise."',
+        Spanish: 'David: "Te llevaré a la luna, Lucy. Te lo prometo."',
+        French: 'David: "Je t\'emmènerai sur la lune, Lucy. C\'est une promesse."',
+        German: 'David: "Ich bringe dich zum Mond, Lucy. Versprochen."',
+      },
+    },
+  ],
+};
+
+const GENERIC_SUBTITLE_CUES: CaptionCue[] = [
   {
     start: 2,
     end: 8,
@@ -201,6 +559,7 @@ export const WatchPage: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [activeSubtitle, setActiveSubtitle] = useState('English [CC]');
+  const [captionOffset, setCaptionOffset] = useState<number>(0); // Sync offset fine-tuning (-2.0s to +2.0s)
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Drawer & Menus visibility
@@ -220,6 +579,7 @@ export const WatchPage: React.FC = () => {
   const [actionToast, setActionToast] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Refs for unmount progress saving
@@ -231,6 +591,20 @@ export const WatchPage: React.FC = () => {
   mediaRef.current = media;
   const updateProgressRef = useRef(updateProgress);
   updateProgressRef.current = updateProgress;
+
+  // Dispatch player command to YouTube IFrame API via postMessage
+  const sendPlayerCommand = useCallback((func: string, args: any[] = []) => {
+    if (iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func, args }),
+          '*'
+        );
+      } catch (e) {
+        // Ignore cross-origin postMessage errors
+      }
+    }
+  }, []);
 
   const isSeries = media?.media_type === 'tv' || Boolean(media?.seasons) || Boolean(media?.seasons_data?.length);
 
@@ -248,6 +622,8 @@ export const WatchPage: React.FC = () => {
 
   // Seasons and episode list for TV shows
   const title = media ? getDisplayTitle(media) : 'CineStream Cinema Player';
+  const trailerKey = media?.trailer_key || 'zSWdZVtXT7E';
+
   const seasonsData: Season[] = useMemo(() => {
     if (!media || !isSeries) return [];
     if (media.seasons_data && media.seasons_data.length > 0) {
@@ -265,14 +641,81 @@ export const WatchPage: React.FC = () => {
     return activeSeason.episodes.find((ep) => ep.episode_number === currentEpisodeNumber) || activeSeason.episodes[0];
   }, [activeSeason, currentEpisodeNumber]);
 
-  // Synchronized active caption based on current playback timestamp and language
+  // Synchronized active caption based on current audio playback timestamp, language and custom sync offset
   const currentSubtitleText = useMemo(() => {
     if (activeSubtitle === 'Off') return null;
-    const cycleTime = currentTime % 150;
-    const cue = SUBTITLE_CUES.find((c) => cycleTime >= c.start && cycleTime <= c.end);
+    const effectiveTime = Math.max(0, currentTime + captionOffset);
+    const cues = TRAILER_SUBTITLES[trailerKey] || GENERIC_SUBTITLE_CUES;
+    const maxEnd = cues[cues.length - 1]?.end || 120;
+    const lookupTime = effectiveTime <= maxEnd ? effectiveTime : effectiveTime % maxEnd;
+
+    const cue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
     if (!cue) return null;
     return cue.translations[activeSubtitle] || cue.translations['English [CC]'] || null;
-  }, [currentTime, activeSubtitle]);
+  }, [currentTime, captionOffset, activeSubtitle, trailerKey]);
+
+  // Listen for real-time audio playback timestamps from YouTube player via postMessage
+  useEffect(() => {
+    const handleWindowMessage = (event: MessageEvent) => {
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            return;
+          }
+        }
+        if (data && data.event === 'infoDelivery' && data.info) {
+          if (typeof data.info.currentTime === 'number') {
+            setCurrentTime(data.info.currentTime);
+          }
+          if (typeof data.info.duration === 'number' && data.info.duration > 0) {
+            setTotalDuration((prev) => Math.max(prev, Math.round(data.info.duration)));
+          }
+          if (typeof data.info.playerState === 'number') {
+            if (data.info.playerState === 1) setIsPlaying(true);
+            else if (data.info.playerState === 2) setIsPlaying(false);
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('message', handleWindowMessage);
+    return () => window.removeEventListener('message', handleWindowMessage);
+  }, []);
+
+  // Poll YouTube status regularly while playing to maintain frame-accurate audio-subtitle alignment
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'listening' }),
+        '*'
+      );
+    }, 600);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  const handleIframeLoad = () => {
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'listening' }),
+      '*'
+    );
+    if (isMuted) {
+      sendPlayerCommand('mute');
+    } else {
+      sendPlayerCommand('unMute');
+      sendPlayerCommand('setVolume', [volume * 100]);
+    }
+    if (!isPlaying) {
+      sendPlayerCommand('pauseVideo');
+    }
+    if (currentTimeRef.current > 0) {
+      sendPlayerCommand('seekTo', [currentTimeRef.current, true]);
+    }
+    sendPlayerCommand('setPlaybackRate', [playbackSpeed]);
+  };
 
   // Fetch media details & restore progress
   useEffect(() => {
@@ -373,6 +816,39 @@ export const WatchPage: React.FC = () => {
     };
   }, [handleMouseMove]);
 
+  // Toggle playback and send sync command to video player
+  const togglePlay = () => {
+    setIsPlaying((prev) => {
+      const next = !prev;
+      sendPlayerCommand(next ? 'playVideo' : 'pauseVideo');
+      return next;
+    });
+    setShowControls(true);
+  };
+
+  const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (nextMuted) {
+      sendPlayerCommand('mute');
+    } else {
+      sendPlayerCommand('unMute');
+      sendPlayerCommand('setVolume', [volume * 100]);
+    }
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    setVolume(newVol);
+    const shouldMute = newVol === 0;
+    setIsMuted(shouldMute);
+    sendPlayerCommand('setVolume', [newVol * 100]);
+    if (shouldMute) {
+      sendPlayerCommand('mute');
+    } else {
+      sendPlayerCommand('unMute');
+    }
+  };
+
   // Keyboard shortcut listener (Space = play/pause, F = fullscreen, Esc, Arrow keys)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -380,8 +856,7 @@ export const WatchPage: React.FC = () => {
 
       if (e.code === 'Space') {
         e.preventDefault();
-        setIsPlaying((prev) => !prev);
-        setShowControls(true);
+        togglePlay();
       } else if (e.key.toLowerCase() === 'f') {
         toggleFullscreen();
       } else if (e.key === 'ArrowRight') {
@@ -389,7 +864,7 @@ export const WatchPage: React.FC = () => {
       } else if (e.key === 'ArrowLeft') {
         seekRelative(-10);
       } else if (e.key.toLowerCase() === 'm') {
-        setIsMuted((prev) => !prev);
+        toggleMute();
       } else if (e.key === 'Escape' && showEpisodesDrawer) {
         setShowEpisodesDrawer(false);
       }
@@ -397,9 +872,9 @@ export const WatchPage: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showEpisodesDrawer]);
+  }, [showEpisodesDrawer, isMuted, volume]);
 
-  // Time ticker while playing
+  // Time ticker fallback while playing
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isPlaying) {
@@ -431,6 +906,7 @@ export const WatchPage: React.FC = () => {
   const seekRelative = (deltaSeconds: number) => {
     const nextTime = Math.max(0, Math.min(totalDuration, currentTimeRef.current + deltaSeconds));
     setCurrentTime(nextTime);
+    sendPlayerCommand('seekTo', [nextTime, true]);
     if (mediaRef.current) {
       updateProgress(mediaRef.current.id, nextTime, totalDurationRef.current, mediaRef.current);
     }
@@ -440,6 +916,7 @@ export const WatchPage: React.FC = () => {
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = Number(e.target.value);
     setCurrentTime(newTime);
+    sendPlayerCommand('seekTo', [newTime, true]);
     if (mediaRef.current) {
       updateProgress(mediaRef.current.id, newTime, totalDurationRef.current, mediaRef.current);
     }
@@ -457,9 +934,11 @@ export const WatchPage: React.FC = () => {
     setCurrentSeasonNumber(seasonNum);
     setCurrentEpisodeNumber(episodeNum);
     setCurrentTime(0);
+    sendPlayerCommand('seekTo', [0, true]);
     setSearchParams({ season: String(seasonNum), episode: String(episodeNum) }, { replace: true });
     setShowEpisodesDrawer(false);
     setIsPlaying(true);
+    sendPlayerCommand('playVideo');
     setActionToast(`Playing S${seasonNum}:E${episodeNum} · ${episodeName}`);
     setTimeout(() => setActionToast(null), 3000);
   };
@@ -500,6 +979,9 @@ export const WatchPage: React.FC = () => {
   // Start Over handler from resume toast
   const handleStartOver = () => {
     setCurrentTime(0);
+    sendPlayerCommand('seekTo', [0, true]);
+    sendPlayerCommand('playVideo');
+    setIsPlaying(true);
     if (media) {
       updateProgress(media.id, 0, totalDuration, media);
     }
@@ -508,7 +990,11 @@ export const WatchPage: React.FC = () => {
     setTimeout(() => setActionToast(null), 2500);
   };
 
-  const trailerKey = media?.trailer_key || 'zSWdZVtXT7E';
+  const handleSelectSpeed = (s: number) => {
+    setPlaybackSpeed(s);
+    sendPlayerCommand('setPlaybackRate', [s]);
+    setShowSpeedMenu(false);
+  };
 
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   const subtitles = ['Off', 'English [CC]', 'Spanish', 'French', 'German'];
@@ -523,8 +1009,11 @@ export const WatchPage: React.FC = () => {
       <div className="absolute inset-0 w-full h-full pointer-events-none flex items-center justify-center">
         {trailerKey ? (
           <iframe
-            src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&mute=${isMuted ? '1' : '0'}&controls=0&loop=1&playlist=${trailerKey}&rel=0`}
+            id="cinestream-video-frame"
+            ref={iframeRef}
+            src={`https://www.youtube-nocookie.com/embed/${trailerKey}?enablejsapi=1&autoplay=1&mute=${isMuted ? '1' : '0'}&controls=0&loop=1&playlist=${trailerKey}&rel=0&playsinline=1`}
             title={title}
+            onLoad={handleIframeLoad}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             className="w-[120vw] h-[120vh] max-w-none border-0"
           />
@@ -701,7 +1190,7 @@ export const WatchPage: React.FC = () => {
           {/* Left: Play/Pause, Replay 10s, Forward 10s, Volume, Timestamps */}
           <div className="flex items-center gap-3 sm:gap-4">
             <button
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={togglePlay}
               aria-label={isPlaying ? 'Pause' : 'Play'}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-zinc-950 hover:bg-zinc-200 transition-colors shadow-lg cursor-pointer"
             >
@@ -729,7 +1218,7 @@ export const WatchPage: React.FC = () => {
             {/* Volume Control */}
             <div className="flex items-center gap-2 group/volume">
               <button
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={toggleMute}
                 aria-label={isMuted ? 'Unmute' : 'Mute'}
                 className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
               >
@@ -741,10 +1230,7 @@ export const WatchPage: React.FC = () => {
                 max={1}
                 step={0.05}
                 value={isMuted ? 0 : volume}
-                onChange={(e) => {
-                  setVolume(Number(e.target.value));
-                  if (isMuted) setIsMuted(false);
-                }}
+                onChange={(e) => handleVolumeChange(Number(e.target.value))}
                 className="w-16 sm:w-20 h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600 hidden sm:block"
               />
             </div>
@@ -799,9 +1285,10 @@ export const WatchPage: React.FC = () => {
               </button>
 
               {showSubtitleMenu && (
-                <div className="absolute right-0 bottom-12 w-48 rounded-xl bg-zinc-900 border border-zinc-800 shadow-2xl p-2 z-40 text-xs">
-                  <div className="font-semibold text-zinc-400 px-3 py-1.5 border-b border-zinc-800 mb-1">
-                    Subtitles
+                <div className="absolute right-0 bottom-12 w-52 rounded-xl bg-zinc-900 border border-zinc-800 shadow-2xl p-2 z-40 text-xs">
+                  <div className="font-semibold text-zinc-400 px-3 py-1.5 border-b border-zinc-800 mb-1 flex items-center justify-between">
+                    <span>Subtitles</span>
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Sync</span>
                   </div>
                   {subtitles.map((sub) => (
                     <button
@@ -818,6 +1305,53 @@ export const WatchPage: React.FC = () => {
                       {activeSubtitle === sub && <Check className="h-3.5 w-3.5 text-red-500" />}
                     </button>
                   ))}
+
+                  {/* Audio Sync Timing Offset Calibration */}
+                  {activeSubtitle !== 'Off' && (
+                    <div className="pt-2 mt-1.5 border-t border-zinc-800 px-2 pb-1">
+                      <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1.5">
+                        <span>Audio Sync:</span>
+                        <span className="font-mono text-zinc-200 font-semibold">
+                          {captionOffset > 0 ? `+${captionOffset}s` : `${captionOffset}s`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCaptionOffset((prev) => Math.round((prev - 0.5) * 10) / 10);
+                          }}
+                          className="flex-1 py-1 text-center rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-300 font-mono transition-colors cursor-pointer"
+                          title="Display captions 0.5s earlier"
+                        >
+                          -0.5s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCaptionOffset(0);
+                          }}
+                          className="px-2 py-1 text-center rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-400 transition-colors cursor-pointer"
+                          title="Reset sync offset"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCaptionOffset((prev) => Math.round((prev + 0.5) * 10) / 10);
+                          }}
+                          className="flex-1 py-1 text-center rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-300 font-mono transition-colors cursor-pointer"
+                          title="Display captions 0.5s later"
+                        >
+                          +0.5s
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -844,10 +1378,7 @@ export const WatchPage: React.FC = () => {
                   {speeds.map((s) => (
                     <button
                       key={s}
-                      onClick={() => {
-                        setPlaybackSpeed(s);
-                        setShowSpeedMenu(false);
-                      }}
+                      onClick={() => handleSelectSpeed(s)}
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
                         playbackSpeed === s ? 'bg-zinc-800 text-white font-bold' : 'text-zinc-400 hover:text-white'
                       }`}
