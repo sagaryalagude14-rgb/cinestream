@@ -29,6 +29,155 @@ import { getDisplayTitle, formatYear } from '../utils/constants';
 import { useWatchHistory } from '../context/WatchHistoryContext';
 import { MOCK_MEDIA_ITEMS, getOrGenerateSeasons } from '../services/mockData';
 
+interface CaptionCue {
+  start: number;
+  end: number;
+  translations: Record<string, string>;
+}
+
+const SUBTITLE_CUES: CaptionCue[] = [
+  {
+    start: 2,
+    end: 8,
+    translations: {
+      'English [CC]': '[Dramatic orchestral score swells]',
+      Spanish: '[Música orquestal dramática aumenta]',
+      French: '[Musique orchestrale dramatique]',
+      German: '[Dramatische orchestrale Musik erklingt]',
+    },
+  },
+  {
+    start: 9,
+    end: 18,
+    translations: {
+      'English [CC]': 'Commander, incoming priority transmission on quantum channel 7.',
+      Spanish: 'Comandante, transmisión prioritaria entrante en el canal cuántico 7.',
+      French: 'Commandant, transmission prioritaire entrante sur le canal quantique 7.',
+      German: 'Kommandant, eingehende Prioritätsübertragung auf Quantenkanal 7.',
+    },
+  },
+  {
+    start: 19,
+    end: 27,
+    translations: {
+      'English [CC]': 'Put it through on main audio. Cross-check all beacon signatures.',
+      Spanish: 'Pásalo al audio principal. Verifica todas las firmas de baliza.',
+      French: 'Mettez-le sur le canal audio principal. Vérifiez les signatures.',
+      German: 'Auf Hauptaudio schalten. Signalmuster der Baken abgleichen.',
+    },
+  },
+  {
+    start: 28,
+    end: 36,
+    translations: {
+      'English [CC]': '"If anyone is receiving this... coordinates locked... do not enter Sector 12."',
+      Spanish: '"Si alguien recibe esto... coordenadas fijadas... no entren al Sector 12."',
+      French: '"Si quelqu\'un reçoit ce message... coordonnées verrouillées... n\'entrez pas dans le secteur 12."',
+      German: '"Falls jemand dies empfängt... Koordinaten erfasst... betreten Sie nicht Sektor 12."',
+    },
+  },
+  {
+    start: 37,
+    end: 45,
+    translations: {
+      'English [CC]': '[Static crackling over comms]',
+      Spanish: '[Estática crujiendo en las comunicaciones]',
+      French: '[Grésillements sur les communications]',
+      German: '[Statisches Rauschen im Funkverkehr]',
+    },
+  },
+  {
+    start: 46,
+    end: 55,
+    translations: {
+      'English [CC]': 'The signal decayed. But atmospheric telemetry is off the charts.',
+      Spanish: 'La señal decayó. Pero la telemetría atmosférica está fuera de control.',
+      French: 'Le signal s\'est éteint. Mais la télémétrie atmosphérique est anormale.',
+      German: 'Signal abgebrochen. Doch die Telemetriedaten sind beispiellos hoch.',
+    },
+  },
+  {
+    start: 56,
+    end: 65,
+    translations: {
+      'English [CC]': 'Prepare sub-light thrusters. We need to see what is on the other side.',
+      Spanish: 'Preparen los propulsores sub-luz. Necesitamos ver qué hay del otro lado.',
+      French: 'Préparez les propulseurs sous-luminiques. Voyons ce qui se trouve de l\'autre côté.',
+      German: 'Sublicht-Triebwerke vorbereiten. Wir müssen sehen, was auf der anderen Seite ist.',
+    },
+  },
+  {
+    start: 66,
+    end: 78,
+    translations: {
+      'English [CC]': '[Deep resonant hum of hyperdrive engines powering up]',
+      Spanish: '[Zumbido profundo de los motores hiperespaciales activándose]',
+      French: '[Vrombissement profond des moteurs hyperspatiaux]',
+      German: '[Tiefes Dröhnen der Hyperraum-Triebwerke beim Hochfahren]',
+    },
+  },
+  {
+    start: 79,
+    end: 85,
+    translations: {
+      'English [CC]': 'Approaching perimeter boundary in five seconds. Brace for deceleration.',
+      Spanish: 'Aproximándonos al límite del perímetro en cinco segundos. Prepárense para desacelerar.',
+      French: 'Approche du périmètre de sécurité dans cinq secondes. Préparez-vous à ralentir.',
+      German: 'Annäherung an die Außengrenze in fünf Sekunden. Auf Abbremsung vorbereiten.',
+    },
+  },
+  {
+    start: 86,
+    end: 96,
+    translations: {
+      'English [CC]': 'There it is. Right where the deep space telescope warned us it would be.',
+      Spanish: 'Ahí está. Justo donde el telescopio de espacio profundo nos advirtió.',
+      French: 'Le voilà. Exactement là où le télescope spatial nous avait prévenus.',
+      German: 'Da ist es. Genau dort, wo das Tiefraumteleskop es vorausgesagt hat.',
+    },
+  },
+  {
+    start: 97,
+    end: 108,
+    translations: {
+      'English [CC]': 'Gravitational lensing is warping the horizon. Maintain safe separation distance.',
+      Spanish: 'La lente gravitatoria distorsiona el horizonte. Mantengan distancia de seguridad.',
+      French: 'La lentille gravitationnelle déforme l\'horizon. Maintenez la distance de sécurité.',
+      German: 'Der Gravitationslinseneffekt krümmt den Horizont. Sicherheitsabstand wahren.',
+    },
+  },
+  {
+    start: 109,
+    end: 119,
+    translations: {
+      'English [CC]': '[Sensors beeping rhythmically in unison]',
+      Spanish: '[Sensores emitiendo pitidos rítmicos al unísono]',
+      French: '[Capteurs émettant des bips rythmés à l\'unisson]',
+      German: '[Sensoren piepen rhythmisch im Einklang]',
+    },
+  },
+  {
+    start: 120,
+    end: 132,
+    translations: {
+      'English [CC]': 'Whatever happened here... it wasn\'t a malfunction. It was deliberate.',
+      Spanish: 'Lo que haya pasado aquí... no fue un fallo. Fue deliberado.',
+      French: 'Ce qui s\'est passé ici... n\'était pas une panne. C\'était délibéré.',
+      German: 'Was auch immer hier geschah... es war kein technischer Defekt. Es war Absicht.',
+    },
+  },
+  {
+    start: 133,
+    end: 145,
+    translations: {
+      'English [CC]': 'All teams, engage tactical standby. We are going in.',
+      Spanish: 'Todos los equipos, entren en alerta táctica. Vamos a entrar.',
+      French: 'Toutes les équipes, tenez-vous prêtes. Nous entrons.',
+      German: 'Alle Teams auf Gefechtsbereitschaft. Wir dringen jetzt ein.',
+    },
+  },
+];
+
 export const WatchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -115,6 +264,15 @@ export const WatchPage: React.FC = () => {
     if (!activeSeason) return null;
     return activeSeason.episodes.find((ep) => ep.episode_number === currentEpisodeNumber) || activeSeason.episodes[0];
   }, [activeSeason, currentEpisodeNumber]);
+
+  // Synchronized active caption based on current playback timestamp and language
+  const currentSubtitleText = useMemo(() => {
+    if (activeSubtitle === 'Off') return null;
+    const cycleTime = currentTime % 150;
+    const cue = SUBTITLE_CUES.find((c) => cycleTime >= c.start && cycleTime <= c.end);
+    if (!cue) return null;
+    return cue.translations[activeSubtitle] || cue.translations['English [CC]'] || null;
+  }, [currentTime, activeSubtitle]);
 
   // Fetch media details & restore progress
   useEffect(() => {
@@ -500,6 +658,21 @@ export const WatchPage: React.FC = () => {
           <span>Skip Intro (+85s)</span>
         </button>
       </div>
+
+      {/* Subtitle / Caption Overlay */}
+      {activeSubtitle !== 'Off' && currentSubtitleText && (
+        <div
+          className={`absolute left-0 right-0 z-20 pointer-events-none select-none flex justify-center px-4 transition-all duration-300 ${
+            showControls ? 'bottom-24 sm:bottom-28' : 'bottom-16 sm:bottom-20'
+          }`}
+        >
+          <div className="max-w-[80%] text-center mx-auto">
+            <span className="inline-block bg-black/75 text-white text-base sm:text-lg md:text-2xl font-semibold px-4 py-1.5 rounded-md backdrop-blur-sm shadow-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-wide leading-relaxed">
+              {currentSubtitleText}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Player Controller Bar */}
       <div

@@ -37,3 +37,14 @@
   background: #3f3f46;
 }
 
+/* Native HTML5 track ::cue styling */
+video::cue {
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-family: system-ui, sans-serif;
+  line-height: 1.4;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
