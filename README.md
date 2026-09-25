@@ -1,10 +1,14 @@
 # CineStream 🎬🍿
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-cinestream--two--steel.vercel.app-00DC82?style=for-the-badge&logo=vercel&logoColor=white)](https://cinestream-two-steel.vercel.app/)
+
 [![React](https://img.shields.io/badge/React-19.0.1-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0.2-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8.3.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3.3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> 🚀 **Live Demo:** [https://cinestream-two-steel.vercel.app/](https://cinestream-two-steel.vercel.app/)
 
 A cinematic, modern streaming platform clone built with **React 19**, **TypeScript**, **Tailwind CSS v4**, and **Vite**. CineStream provides a video streaming experience inspired by modern entertainment hubs, complete with personalized watch history, smart resume, multi-profile management, and a custom HTML5 video player.
 
