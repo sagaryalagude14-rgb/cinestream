@@ -54,6 +54,7 @@ export interface MediaItem {
   media_type: MediaType;
   genre_ids: number[];
   // Extended fields for rich modal & watch experiences
+  video_url?: string;
   trailer_key?: string;
   maturity_rating?: string;
   match_percentage?: number;

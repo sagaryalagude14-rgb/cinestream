@@ -536,6 +536,23 @@ const GENERIC_SUBTITLE_CUES: CaptionCue[] = [
   },
 ];
 
+function generateVttBlobUrl(cues: CaptionCue[], lang: string): string {
+  let vtt = 'WEBVTT\n\n';
+  cues.forEach((cue, index) => {
+    const startM = Math.floor(cue.start / 60);
+    const startS = Math.floor(cue.start % 60);
+    const endM = Math.floor(cue.end / 60);
+    const endS = Math.floor(cue.end % 60);
+    const startStr = `${String(startM).padStart(2, '0')}:${String(startS).padStart(2, '0')}.000`;
+    const endStr = `${String(endM).padStart(2, '0')}:${String(endS).padStart(2, '0')}.000`;
+    const text = cue.translations[lang] || cue.translations['English [CC]'] || '';
+    if (text) {
+      vtt += `${index + 1}\n${startStr} --> ${endStr}\n${text}\n\n`;
+    }
+  });
+  return URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }));
+}
+
 export const WatchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -560,6 +577,7 @@ export const WatchPage: React.FC = () => {
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [activeSubtitle, setActiveSubtitle] = useState('English [CC]');
   const [captionOffset, setCaptionOffset] = useState<number>(0); // Sync offset fine-tuning (-2.0s to +2.0s)
+  const [currentSubtitleText, setCurrentSubtitleText] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Drawer & Menus visibility
@@ -579,8 +597,10 @@ export const WatchPage: React.FC = () => {
   const [actionToast, setActionToast] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedTimeRef = useRef<number>(0);
 
   // Refs for unmount progress saving
   const currentTimeRef = useRef(currentTime);
@@ -623,6 +643,22 @@ export const WatchPage: React.FC = () => {
   // Seasons and episode list for TV shows
   const title = media ? getDisplayTitle(media) : 'CineStream Cinema Player';
   const trailerKey = media?.trailer_key || 'zSWdZVtXT7E';
+  const defaultVideoUrl = 'https://cdn.jsdelivr.net/gh/mediaelement/mediaelement-files@master/big_buck_bunny.mp4';
+  const videoSource = media?.video_url || defaultVideoUrl;
+
+  const cues = useMemo(() => {
+    return TRAILER_SUBTITLES[trailerKey] || GENERIC_SUBTITLE_CUES;
+  }, [trailerKey]);
+
+  // Pre-generate WebVTT blob track URLs for native HTML5 <track> elements
+  const trackUrls = useMemo(() => {
+    return {
+      'English [CC]': generateVttBlobUrl(cues, 'English [CC]'),
+      Spanish: generateVttBlobUrl(cues, 'Spanish'),
+      French: generateVttBlobUrl(cues, 'French'),
+      German: generateVttBlobUrl(cues, 'German'),
+    };
+  }, [cues]);
 
   const seasonsData: Season[] = useMemo(() => {
     if (!media || !isSeries) return [];
@@ -641,18 +677,70 @@ export const WatchPage: React.FC = () => {
     return activeSeason.episodes.find((ep) => ep.episode_number === currentEpisodeNumber) || activeSeason.episodes[0];
   }, [activeSeason, currentEpisodeNumber]);
 
-  // Synchronized active caption based on current audio playback timestamp, language and custom sync offset
-  const currentSubtitleText = useMemo(() => {
-    if (activeSubtitle === 'Off') return null;
-    const effectiveTime = Math.max(0, currentTime + captionOffset);
-    const cues = TRAILER_SUBTITLES[trailerKey] || GENERIC_SUBTITLE_CUES;
+  // Forced synchronization directly powered by the HTML5 video element's 'timeupdate' event
+  const handleTimeUpdate = useCallback(
+    (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      const time = e.currentTarget.currentTime;
+      setCurrentTime(time);
+
+      // Periodically update watch history progress
+      if (mediaRef.current && Math.abs(time - lastSavedTimeRef.current) > 2) {
+        lastSavedTimeRef.current = time;
+        updateProgressRef.current(mediaRef.current.id, time, totalDurationRef.current, mediaRef.current);
+      }
+
+      if (activeSubtitle === 'Off') {
+        setCurrentSubtitleText(null);
+        return;
+      }
+
+      // Synchronize cues with video playback time
+      const effectiveTime = Math.max(0, time + captionOffset);
+      const maxEnd = cues[cues.length - 1]?.end || 120;
+      const lookupTime = effectiveTime <= maxEnd ? effectiveTime : effectiveTime % maxEnd;
+
+      const matchedCue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
+      const text = matchedCue
+        ? matchedCue.translations[activeSubtitle] || matchedCue.translations['English [CC]'] || null
+        : null;
+      setCurrentSubtitleText(text);
+    },
+    [activeSubtitle, captionOffset, cues]
+  );
+
+  // Synchronize subtitle track state when changing language, offset, or media while paused
+  useEffect(() => {
+    if (activeSubtitle === 'Off') {
+      setCurrentSubtitleText(null);
+      return;
+    }
+    const targetTime = videoRef.current ? videoRef.current.currentTime : currentTime;
+    const effectiveTime = Math.max(0, targetTime + captionOffset);
     const maxEnd = cues[cues.length - 1]?.end || 120;
     const lookupTime = effectiveTime <= maxEnd ? effectiveTime : effectiveTime % maxEnd;
 
-    const cue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
-    if (!cue) return null;
-    return cue.translations[activeSubtitle] || cue.translations['English [CC]'] || null;
-  }, [currentTime, captionOffset, activeSubtitle, trailerKey]);
+    const matchedCue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
+    const text = matchedCue
+      ? matchedCue.translations[activeSubtitle] || matchedCue.translations['English [CC]'] || null
+      : null;
+    setCurrentSubtitleText(text);
+  }, [activeSubtitle, captionOffset, cues, currentTime]);
+
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const dur = e.currentTarget.duration;
+    if (dur && !isNaN(dur) && dur > 0) {
+      setTotalDuration(Math.round(dur));
+    }
+    if (currentTimeRef.current > 0) {
+      e.currentTarget.currentTime = currentTimeRef.current;
+    }
+    e.currentTarget.playbackRate = playbackSpeed;
+    e.currentTarget.volume = volume;
+    e.currentTarget.muted = isMuted;
+    if (isPlaying) {
+      e.currentTarget.play().catch(() => {});
+    }
+  };
 
   // Listen for real-time audio playback timestamps from YouTube player via postMessage
   useEffect(() => {
@@ -818,29 +906,38 @@ export const WatchPage: React.FC = () => {
 
   // Toggle playback and send sync command to video player
   const togglePlay = () => {
-    setIsPlaying((prev) => {
-      const next = !prev;
-      sendPlayerCommand(next ? 'playVideo' : 'pauseVideo');
-      return next;
-    });
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    } else {
+      setIsPlaying((prev) => !prev);
+    }
+    sendPlayerCommand(isPlaying ? 'pauseVideo' : 'playVideo');
     setShowControls(true);
   };
 
   const toggleMute = () => {
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
-    if (nextMuted) {
-      sendPlayerCommand('mute');
-    } else {
-      sendPlayerCommand('unMute');
-      sendPlayerCommand('setVolume', [volume * 100]);
+    if (videoRef.current) {
+      videoRef.current.muted = nextMuted;
     }
+    sendPlayerCommand(nextMuted ? 'mute' : 'unMute');
   };
 
   const handleVolumeChange = (newVol: number) => {
     setVolume(newVol);
     const shouldMute = newVol === 0;
     setIsMuted(shouldMute);
+    if (videoRef.current) {
+      videoRef.current.volume = newVol;
+      videoRef.current.muted = shouldMute;
+    }
     sendPlayerCommand('setVolume', [newVol * 100]);
     if (shouldMute) {
       sendPlayerCommand('mute');
@@ -874,25 +971,6 @@ export const WatchPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showEpisodesDrawer, isMuted, volume]);
 
-  // Time ticker fallback while playing
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setCurrentTime((prev) => {
-          if (prev >= totalDuration) {
-            setIsPlaying(false);
-            return totalDuration;
-          }
-          return prev + 1;
-        });
-      }, 1000 / playbackSpeed);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isPlaying, totalDuration, playbackSpeed]);
-
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen?.();
@@ -906,6 +984,9 @@ export const WatchPage: React.FC = () => {
   const seekRelative = (deltaSeconds: number) => {
     const nextTime = Math.max(0, Math.min(totalDuration, currentTimeRef.current + deltaSeconds));
     setCurrentTime(nextTime);
+    if (videoRef.current) {
+      videoRef.current.currentTime = nextTime;
+    }
     sendPlayerCommand('seekTo', [nextTime, true]);
     if (mediaRef.current) {
       updateProgress(mediaRef.current.id, nextTime, totalDurationRef.current, mediaRef.current);
@@ -916,6 +997,9 @@ export const WatchPage: React.FC = () => {
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = Number(e.target.value);
     setCurrentTime(newTime);
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime;
+    }
     sendPlayerCommand('seekTo', [newTime, true]);
     if (mediaRef.current) {
       updateProgress(mediaRef.current.id, newTime, totalDurationRef.current, mediaRef.current);
@@ -934,6 +1018,10 @@ export const WatchPage: React.FC = () => {
     setCurrentSeasonNumber(seasonNum);
     setCurrentEpisodeNumber(episodeNum);
     setCurrentTime(0);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
     sendPlayerCommand('seekTo', [0, true]);
     setSearchParams({ season: String(seasonNum), episode: String(episodeNum) }, { replace: true });
     setShowEpisodesDrawer(false);
@@ -979,6 +1067,10 @@ export const WatchPage: React.FC = () => {
   // Start Over handler from resume toast
   const handleStartOver = () => {
     setCurrentTime(0);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
     sendPlayerCommand('seekTo', [0, true]);
     sendPlayerCommand('playVideo');
     setIsPlaying(true);
@@ -992,6 +1084,9 @@ export const WatchPage: React.FC = () => {
 
   const handleSelectSpeed = (s: number) => {
     setPlaybackSpeed(s);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = s;
+    }
     sendPlayerCommand('setPlaybackRate', [s]);
     setShowSpeedMenu(false);
   };
@@ -1005,24 +1100,61 @@ export const WatchPage: React.FC = () => {
       onMouseMove={handleMouseMove}
       className="relative w-screen h-screen bg-black overflow-hidden select-none cursor-default"
     >
-      {/* Background Video Player */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none flex items-center justify-center">
-        {trailerKey ? (
-          <iframe
-            id="cinestream-video-frame"
-            ref={iframeRef}
-            src={`https://www.youtube-nocookie.com/embed/${trailerKey}?enablejsapi=1&autoplay=1&mute=${isMuted ? '1' : '0'}&controls=0&loop=1&playlist=${trailerKey}&rel=0&playsinline=1`}
-            title={title}
-            onLoad={handleIframeLoad}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            className="w-[120vw] h-[120vh] max-w-none border-0"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center text-zinc-600">
-            <Film className="h-16 w-16 mb-2" />
-            <p className="text-sm">Video Stream Ready</p>
-          </div>
-        )}
+      {/* Background HTML5 Video Player with forced timeupdate subtitle synchronization */}
+      <div className="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden">
+        <video
+          ref={videoRef}
+          id="cinestream-main-video"
+          src={videoSource}
+          poster={media?.backdrop_path || undefined}
+          autoPlay
+          playsInline
+          muted={isMuted}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={handleNextEpisode}
+          crossOrigin="anonymous"
+          className="w-full h-full object-cover"
+        >
+          {trackUrls['English [CC]'] && (
+            <track
+              kind="subtitles"
+              src={trackUrls['English [CC]']}
+              srcLang="en"
+              label="English [CC]"
+              default={activeSubtitle === 'English [CC]'}
+            />
+          )}
+          {trackUrls['Spanish'] && (
+            <track
+              kind="subtitles"
+              src={trackUrls['Spanish']}
+              srcLang="es"
+              label="Spanish"
+              default={activeSubtitle === 'Spanish'}
+            />
+          )}
+          {trackUrls['French'] && (
+            <track
+              kind="subtitles"
+              src={trackUrls['French']}
+              srcLang="fr"
+              label="French"
+              default={activeSubtitle === 'French'}
+            />
+          )}
+          {trackUrls['German'] && (
+            <track
+              kind="subtitles"
+              src={trackUrls['German']}
+              srcLang="de"
+              label="German"
+              default={activeSubtitle === 'German'}
+            />
+          )}
+        </video>
       </div>
 
       {/* Dark Vignette Overlay */}
