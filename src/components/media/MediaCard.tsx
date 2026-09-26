@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Plus, Check, ThumbsUp, Info, Star, Film, X, Clock } from 'lucide-react';
+import { Play, Plus, Check, ThumbsUp, Info, Star, Film, X, Clock, Volume2, VolumeX } from 'lucide-react';
 import { MediaItem } from '../../types/media';
 import { TMDB_IMAGE_BASE_W500, formatYear, getDisplayTitle, getGenreNames } from '../../utils/constants';
 import { useSavedMedia } from '../../context/SavedMediaContext';
 import { useWatchHistory } from '../../context/WatchHistoryContext';
 import { formatRemainingTime } from './ContinueWatchingRow';
+import { RELIABLE_STREAMS } from '../../services/mockData';
 
 interface MediaCardProps {
   item: MediaItem;
@@ -26,6 +27,13 @@ export const MediaCard: React.FC<MediaCardProps> = ({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+
+  // Hover trailer preview & sound state
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const navigate = useNavigate();
   const { isSaved, toggleSaved } = useSavedMedia();
   const { getMediaProgress, removeFromHistory } = useWatchHistory();
@@ -48,7 +56,7 @@ export const MediaCard: React.FC<MediaCardProps> = ({
       ? formatRemainingTime(progress.currentTime, progress.duration)
       : null;
 
-  // Determine image URL prioritizing explicit high-res posterUrl/backdropUrl
+  // Determine image URL
   const rawPath = aspectRatio === 'landscape'
     ? item.backdropUrl || item.backdrop_path || item.posterUrl || item.poster_path
     : item.posterUrl || item.poster_path || item.backdropUrl || item.backdrop_path;
@@ -59,9 +67,39 @@ export const MediaCard: React.FC<MediaCardProps> = ({
       : `${TMDB_IMAGE_BASE_W500}${rawPath}`
     : '';
 
+  const trailerStreamUrl = item.video_url || item.videoUrl || RELIABLE_STREAMS.default;
+
+  // Handle Mouse Enter / Leave for hover trailer preview
+  const handleMouseEnter = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      setIsHovered(true);
+    }, 400);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setIsHovered(false);
+    setIsMuted(true);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigate(`/watch/${item.id}`);
+  };
+
+  const handleToggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted((prev) => !prev);
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+    }
   };
 
   const handleToggleSave = (e: React.MouseEvent) => {
@@ -90,60 +128,88 @@ export const MediaCard: React.FC<MediaCardProps> = ({
   };
 
   const aspectClass = aspectRatio === 'landscape' ? 'aspect-video' : 'aspect-[2/3]';
-
   const shouldShowRemove = showRemoveFromHistory || Boolean(onRemoveFromHistory);
 
   return (
     <div
       onClick={handleCardClick}
-      className="group relative cursor-pointer flex flex-col flex-shrink-0 rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800/80 transition-all duration-300 hover:border-zinc-700 hover:scale-[1.03] hover:shadow-2xl hover:shadow-black/70 hover:z-20"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="group relative cursor-pointer flex flex-col flex-shrink-0 rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800/80 transition-all duration-300 hover:border-zinc-700 hover:scale-[1.04] hover:shadow-2xl hover:shadow-black/70 hover:z-20"
       style={{
         minWidth: aspectRatio === 'landscape' ? '280px' : '190px',
         maxWidth: aspectRatio === 'landscape' ? '320px' : '220px',
       }}
     >
-      {/* Media Image Container */}
+      {/* Media Image / Hover Video Trailer Container */}
       <div className={`w-full ${aspectClass} bg-zinc-850 relative overflow-hidden`}>
-        {/* Zero-broken-image fallback container */}
-        {(!imageUrl || imageError) ? (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-zinc-900 via-zinc-850 to-zinc-950 text-center select-none">
-            <Film className="h-8 w-8 text-zinc-600 mb-2" />
-            <p className="text-xs font-semibold text-zinc-300 line-clamp-2">{title}</p>
-            <span className="text-[10px] text-zinc-500 mt-1">{genres[0] || 'Feature Film'}</span>
+        {/* Hover 20s Video Trailer Preview */}
+        {isHovered ? (
+          <div className="absolute inset-0 z-10 bg-black">
+            <video
+              ref={videoRef}
+              src={trailerStreamUrl}
+              autoPlay
+              loop
+              muted={isMuted}
+              playsInline
+              className="w-full h-full object-cover animate-in fade-in duration-300"
+            />
+            {/* Hover Sound Control Toggle */}
+            <button
+              onClick={handleToggleMute}
+              title={isMuted ? 'Unmute Trailer Sound' : 'Mute Trailer Sound'}
+              className="absolute top-2 right-2 z-30 p-1.5 rounded-full bg-black/80 hover:bg-zinc-800 text-white border border-zinc-700/80 shadow-lg transition-transform hover:scale-110 cursor-pointer"
+            >
+              {isMuted ? <VolumeX className="h-3.5 w-3.5 text-red-500" /> : <Volume2 className="h-3.5 w-3.5 text-white" />}
+            </button>
+            <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 rounded bg-red-600/90 text-[10px] font-bold text-white tracking-wider uppercase backdrop-blur-md">
+              Previewing Trailer
+            </div>
           </div>
         ) : (
-          <img
-            src={imageUrl}
-            alt={title}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onLoad={() => setImageLoaded(true)}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              const fallback = item.posterUrl || item.backdropUrl || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=800&q=80';
-              if (target.src !== fallback) {
-                target.src = fallback;
-              } else {
-                setImageError(true);
-              }
-            }}
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-          />
+          <>
+            {/* Poster / Backdrop Image */}
+            {(!imageUrl || imageError) ? (
+              <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-zinc-900 via-zinc-850 to-zinc-950 text-center select-none">
+                <Film className="h-8 w-8 text-zinc-600 mb-2" />
+                <p className="text-xs font-semibold text-zinc-300 line-clamp-2">{title}</p>
+                <span className="text-[10px] text-zinc-500 mt-1">{genres[0] || 'Feature Film'}</span>
+              </div>
+            ) : (
+              <img
+                src={imageUrl}
+                alt={title}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onLoad={() => setImageLoaded(true)}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  const fallback = item.posterUrl || item.backdropUrl || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=800&q=80';
+                  if (target.src !== fallback) {
+                    target.src = fallback;
+                  } else {
+                    setImageError(true);
+                  }
+                }}
+                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            )}
+
+            {!imageLoaded && !imageError && (
+              <div className="absolute inset-0 bg-zinc-900 animate-pulse flex items-center justify-center">
+                <Film className="h-6 w-6 text-zinc-700 animate-spin" />
+              </div>
+            )}
+          </>
         )}
 
-        {/* Shimmer skeleton before image loads */}
-        {!imageLoaded && !imageError && (
-          <div className="absolute inset-0 bg-zinc-900 animate-pulse flex items-center justify-center">
-            <Film className="h-6 w-6 text-zinc-700 animate-spin" />
-          </div>
-        )}
+        {/* Subtle top gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity pointer-events-none" />
 
-        {/* Subtle top gradient for contrast */}
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-
-        {/* Remove from History (X) button on hover */}
+        {/* Remove from History Button */}
         {shouldShowRemove && (
           <button
             onClick={handleRemoveHistory}
@@ -155,22 +221,24 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           </button>
         )}
 
-        {/* Match / Rating chip in top corner */}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md border border-zinc-700/50 text-[11px] font-mono text-amber-400">
-          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-          <span>{rating}</span>
-        </div>
+        {/* Rating chip */}
+        {!isHovered && (
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md border border-zinc-700/50 text-[11px] font-mono text-amber-400">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+            <span>{rating}</span>
+          </div>
+        )}
 
-        {/* Small overlay timestamp badge on hover */}
-        {remainingTimeLabel && (
+        {/* Overlay timestamp badge */}
+        {remainingTimeLabel && !isHovered && (
           <div className="absolute bottom-2.5 left-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 px-2 py-0.5 rounded bg-black/85 backdrop-blur-md border border-zinc-700/60 text-[10px] font-mono font-medium text-white shadow-md">
             <Clock className="h-3 w-3 text-red-500" />
             <span>{remainingTimeLabel}</span>
           </div>
         )}
 
-        {/* Watch Progress Bar fixed at bottom edge of image container */}
-        {progressPercent > 0 && (
+        {/* Watch Progress Bar fixed at bottom edge */}
+        {progressPercent > 0 && !isHovered && (
           <div className="absolute bottom-0 left-0 right-0 z-10">
             <div className="w-full h-1 bg-zinc-800/90 overflow-hidden">
               <div
@@ -189,7 +257,6 @@ export const MediaCard: React.FC<MediaCardProps> = ({
             {title}
           </h3>
 
-          {/* Clean metadata line without pill enclosures */}
           <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 mt-1 font-normal">
             {remainingTimeLabel ? (
               <span className="text-red-400 font-medium">
@@ -209,13 +276,13 @@ export const MediaCard: React.FC<MediaCardProps> = ({
           </div>
         </div>
 
-        {/* Hover Quick Actions */}
+        {/* Quick Actions */}
         <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <button
               onClick={handlePlay}
               aria-label={`Play ${title}`}
-              title="Play Now"
+              title="Play Master Stream"
               className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-zinc-950 hover:bg-zinc-200 transition-colors shadow-sm focus:outline-none cursor-pointer"
             >
               <Play className="h-3.5 w-3.5 fill-current ml-0.5" />

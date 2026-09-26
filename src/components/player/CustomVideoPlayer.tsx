@@ -8,22 +8,23 @@ import {
   VolumeX,
   Maximize,
   Minimize,
-  Subtitles,
   Check,
   FastForward,
   SkipForward,
   Tv,
   X,
-  ChevronDown,
-  Clock,
   Film,
   Languages,
   Sliders,
   Sparkles,
+  Settings,
+  Monitor,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { MediaItem, Season, Episode, AudioTrack, SubtitleTrack } from '../../types/media';
 import { getDisplayTitle } from '../../utils/constants';
-import { RELIABLE_STREAMS } from '../../services/mockData';
+import { RELIABLE_STREAMS, STREAM_POOL } from '../../services/mockData';
 
 interface CustomVideoPlayerProps {
   media: MediaItem | null;
@@ -85,7 +86,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   onNextEpisode,
   onPreviousEpisode,
 }) => {
-  // Video & audio playback states
+  // Video & playback timing states
   const expectedTotalDuration = useMemo(() => {
     if (media?.duration_seconds && media.duration_seconds > 0) return media.duration_seconds;
     if (media?.durationSeconds && media.durationSeconds > 0) return media.durationSeconds;
@@ -97,45 +98,68 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const [totalDuration, setTotalDuration] = useState<number>(expectedTotalDuration);
   const virtualOffsetRef = useRef<number>(0);
   const [volume, setVolume] = useState(1.0);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [showUnmutePrompt, setShowUnmutePrompt] = useState(true);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const [videoQuality, setVideoQuality] = useState<'auto' | '1080p' | '720p' | '480p'>('auto');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [playbackMode, setPlaybackMode] = useState<'video' | 'trailer'>('video');
+
+  // Seek bar hover timestamp preview
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<number>(0);
 
   // Multi-Language Audio & Subtitle states
   const [activeAudioTrackId, setActiveAudioTrackId] = useState<string>('');
   const [activeSubtitleTrackId, setActiveSubtitleTrackId] = useState<string>('sub-en');
-  const [captionOffset, setCaptionOffset] = useState<number>(0); // -2.0s to +2.0s
+  const [captionOffset, setCaptionOffset] = useState<number>(0);
   const [currentSubtitleText, setCurrentSubtitleText] = useState<string | null>(null);
 
-  // Menus and Drawers
+  // Menus & Drawers
   const [showAudioSubtitleModal, setShowAudioSubtitleModal] = useState(false);
-  const [audioSubtitleTab, setAudioSubtitleTab] = useState<'both' | 'audio' | 'subtitles'>('both');
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showEpisodesDrawer, setShowEpisodesDrawer] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
 
-  // References
+  // References for non-stale callback handlers
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const currentTimeRef = useRef<number>(currentTime);
+  const totalDurationRef = useRef<number>(totalDuration);
+  const volumeRef = useRef<number>(volume);
+  const isMutedRef = useRef<boolean>(isMuted);
+  const isPlayingRef = useRef<boolean>(isPlaying);
+
+  // Keep state refs synchronized
+  useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+  useEffect(() => { totalDurationRef.current = totalDuration; }, [totalDuration]);
+  useEffect(() => { volumeRef.current = volume; }, [volume]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
   const displayTitle = customTitle || (media ? getDisplayTitle(media) : 'CineStream Cinema Player');
   const trailerKey = media?.trailer_key || 'zSWdZVtXT7E';
   const initialVideoUrl = media?.video_url || media?.videoUrl || RELIABLE_STREAMS.default;
-  const defaultVideoUrl = initialVideoUrl;
 
-  const [videoError, setVideoError] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(initialVideoUrl);
+  const [videoError, setVideoError] = useState(false);
   const [streamBuffering, setStreamBuffering] = useState<boolean>(false);
+  const retryCountRef = useRef<number>(0);
+  const MAX_STREAM_RETRIES = 4;
+  const stallTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync currentSrc when initialVideoUrl changes
   useEffect(() => {
     setCurrentSrc(initialVideoUrl);
     setVideoError(false);
+    retryCountRef.current = 0;
   }, [initialVideoUrl]);
 
   // Audio tracks list
@@ -143,14 +167,14 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     if (media?.audio_tracks && media.audio_tracks.length > 0) return media.audio_tracks;
     if (media?.audioTracks && media.audioTracks.length > 0) return media.audioTracks;
     return [
-      { id: 'audio-en', language: 'English [Original 5.1]', code: 'en', src: defaultVideoUrl, isDefault: true },
-      { id: 'audio-es', language: 'Spanish (Español Latino)', code: 'es', src: defaultVideoUrl },
-      { id: 'audio-hi', language: 'Hindi (हिन्दी Dubbed)', code: 'hi', src: defaultVideoUrl },
-      { id: 'audio-fr', language: 'French (Français V.F.)', code: 'fr', src: defaultVideoUrl },
-      { id: 'audio-de', language: 'German (Deutsch)', code: 'de', src: defaultVideoUrl },
-      { id: 'audio-ja', language: 'Japanese (日本語 吹替)', code: 'ja', src: defaultVideoUrl },
+      { id: 'audio-en', language: 'English [Original 5.1]', code: 'en', src: initialVideoUrl, isDefault: true },
+      { id: 'audio-es', language: 'Spanish (Español Latino)', code: 'es', src: initialVideoUrl },
+      { id: 'audio-hi', language: 'Hindi (हिन्दी Dubbed)', code: 'hi', src: initialVideoUrl },
+      { id: 'audio-fr', language: 'French (Français V.F.)', code: 'fr', src: initialVideoUrl },
+      { id: 'audio-de', language: 'German (Deutsch)', code: 'de', src: initialVideoUrl },
+      { id: 'audio-ja', language: 'Japanese (日本語 吹替)', code: 'ja', src: initialVideoUrl },
     ];
-  }, [media, defaultVideoUrl]);
+  }, [media, initialVideoUrl]);
 
   // Subtitle tracks list
   const availableSubtitles: SubtitleTrack[] = useMemo(() => {
@@ -250,21 +274,6 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     ];
   }, [media, displayTitle]);
 
-  // Initialize active tracks
-  useEffect(() => {
-    if (availableAudioTracks.length > 0 && !activeAudioTrackId) {
-      const defaultAudio = availableAudioTracks.find((a) => a.isDefault) || availableAudioTracks[0];
-      setActiveAudioTrackId(defaultAudio.id);
-    }
-  }, [availableAudioTracks, activeAudioTrackId]);
-
-  useEffect(() => {
-    if (availableSubtitles.length > 0 && (!activeSubtitleTrackId || activeSubtitleTrackId === 'sub-en')) {
-      const defaultSub = availableSubtitles.find((s) => s.isDefault) || availableSubtitles[0];
-      setActiveSubtitleTrackId(defaultSub.id);
-    }
-  }, [availableSubtitles, activeSubtitleTrackId]);
-
   // Selected tracks
   const selectedAudioTrack = useMemo(() => {
     return availableAudioTracks.find((a) => a.id === activeAudioTrackId) || availableAudioTracks[0];
@@ -275,7 +284,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     return availableSubtitles.find((s) => s.id === activeSubtitleTrackId) || availableSubtitles[0];
   }, [availableSubtitles, activeSubtitleTrackId]);
 
-  // Generate WebVTT blob track URLs
+  // Track blob URLs
   const trackBlobUrls = useMemo(() => {
     const urls: Record<string, string> = {};
     availableSubtitles.forEach((track) => {
@@ -296,12 +305,12 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     (e: React.SyntheticEvent<HTMLVideoElement>) => {
       const rawTime = e.currentTarget.currentTime;
       const effectiveTime = Math.min(
-        totalDuration,
+        totalDurationRef.current,
         Math.round(rawTime + virtualOffsetRef.current)
       );
       setCurrentTime(effectiveTime);
       if (onTimeUpdate) {
-        onTimeUpdate(effectiveTime, totalDuration);
+        onTimeUpdate(effectiveTime, totalDurationRef.current);
       }
 
       // Live cue sync
@@ -322,27 +331,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       const matchedCue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
       setCurrentSubtitleText(matchedCue ? matchedCue.text : null);
     },
-    [captionOffset, onTimeUpdate, selectedSubtitleTrack, activeSubtitleTrackId, totalDuration]
+    [captionOffset, onTimeUpdate, selectedSubtitleTrack, activeSubtitleTrackId]
   );
-
-  // Sync subtitle text when switching subtitles or sync offset while paused
-  useEffect(() => {
-    if (!selectedSubtitleTrack || activeSubtitleTrackId === 'off') {
-      setCurrentSubtitleText(null);
-      return;
-    }
-    const targetTime = videoRef.current ? videoRef.current.currentTime : (currentTime % 120);
-    const effectiveTime = Math.max(0, targetTime + captionOffset);
-    const cues = selectedSubtitleTrack.cues;
-    if (!cues || cues.length === 0) {
-      setCurrentSubtitleText(null);
-      return;
-    }
-    const maxEnd = cues[cues.length - 1]?.end || 120;
-    const lookupTime = effectiveTime <= maxEnd ? effectiveTime : effectiveTime % maxEnd;
-    const matchedCue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
-    setCurrentSubtitleText(matchedCue ? matchedCue.text : null);
-  }, [selectedSubtitleTrack, activeSubtitleTrackId, captionOffset, currentTime]);
 
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const rawDur = e.currentTarget.duration;
@@ -372,8 +362,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   };
 
   const handleVideoEnded = () => {
-    if (videoRef.current && currentTime < totalDuration - 10) {
-      // Loop the stream preview seamlessly while keeping track of virtual time
+    if (videoRef.current && currentTimeRef.current < totalDurationRef.current - 10) {
       const streamDur = videoRef.current.duration || 600;
       virtualOffsetRef.current += streamDur;
       videoRef.current.currentTime = 0;
@@ -387,28 +376,33 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
   };
 
+  // Automatic Failover Stream Error Recovery
   const handleVideoError = () => {
-    console.warn("Primary video failed to load. Switching to reliable fallback stream.");
-    setVideoError(true);
-    // Fall back to guaranteed default MP4 stream
-    if (currentSrc !== RELIABLE_STREAMS.default) {
-      setCurrentSrc(RELIABLE_STREAMS.default);
-      triggerToast('Primary video failed to load. Switching to reliable fallback stream.');
+    console.warn('Stream load error on URL:', currentSrc, 'Retry count:', retryCountRef.current);
+
+    if (retryCountRef.current < MAX_STREAM_RETRIES) {
+      retryCountRef.current += 1;
+      const nextStreamIndex = retryCountRef.current % STREAM_POOL.length;
+      const fallbackSrc = STREAM_POOL[nextStreamIndex];
+      setCurrentSrc(fallbackSrc);
+      setVideoError(false);
+      triggerToast(`Switching stream server (${retryCountRef.current}/${MAX_STREAM_RETRIES})...`);
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.load();
           videoRef.current.play().catch(() => {});
         }
-      }, 200);
+      }, 300);
     } else {
-      triggerToast('Stream unavailable. Switched to official stream presentation.');
-      setPlaybackMode('trailer');
+      setVideoError(true);
+      setStreamBuffering(false);
+      triggerToast('Stream failover limit reached. Select server or switch to trailer.');
     }
   };
 
-  // Playback controls
-  const togglePlay = () => {
-    if (videoRef.current) {
+  // Playback Control Handlers
+  const togglePlay = useCallback(() => {
+    if (videoRef.current && playbackMode === 'video') {
       if (videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
         setIsPlaying(true);
@@ -420,9 +414,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       setIsPlaying((prev) => !prev);
     }
     setShowControls(true);
-  };
+  }, [playbackMode]);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
       setIsMuted(videoRef.current.muted);
@@ -433,20 +427,23 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     } else {
       setIsMuted((prev) => !prev);
     }
-  };
+    setShowUnmutePrompt(false);
+  }, []);
 
-  const handleVolumeChange = (newVol: number) => {
-    const shouldMute = newVol === 0;
+  const handleVolumeChange = useCallback((newVol: number) => {
+    const clampedVol = Math.max(0, Math.min(1, newVol));
+    const shouldMute = clampedVol === 0;
     setIsMuted(shouldMute);
-    setVolume(newVol);
+    setVolume(clampedVol);
     if (videoRef.current) {
-      videoRef.current.volume = newVol;
+      videoRef.current.volume = clampedVol;
       videoRef.current.muted = shouldMute;
     }
-  };
+    setShowUnmutePrompt(false);
+  }, []);
 
-  const seekRelative = (deltaSeconds: number) => {
-    const nextTime = Math.max(0, Math.min(totalDuration, currentTime + deltaSeconds));
+  const seekRelative = useCallback((deltaSeconds: number) => {
+    const nextTime = Math.max(0, Math.min(totalDurationRef.current, currentTimeRef.current + deltaSeconds));
     setCurrentTime(nextTime);
     if (videoRef.current) {
       const rawDur = videoRef.current.duration;
@@ -460,10 +457,10 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       }
     }
     if (onTimeUpdate) {
-      onTimeUpdate(nextTime, totalDuration);
+      onTimeUpdate(nextTime, totalDurationRef.current);
     }
     triggerToast(deltaSeconds > 0 ? `+${deltaSeconds}s` : `${deltaSeconds}s`);
-  };
+  }, [onTimeUpdate]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = Number(e.target.value);
@@ -484,7 +481,19 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
   };
 
-  const toggleFullscreen = () => {
+  const handleSeekHover = (e: React.MouseEvent<HTMLInputElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+    setHoverTime(Math.round(percentage * totalDuration));
+    setHoverPosition(percentage * 100);
+  };
+
+  const handleSeekLeave = () => {
+    setHoverTime(null);
+  };
+
+  const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen?.();
       setIsFullscreen(true);
@@ -492,7 +501,28 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       document.exitFullscreen?.();
       setIsFullscreen(false);
     }
-  };
+  }, []);
+
+  const toggleTheaterMode = useCallback(() => {
+    setIsTheaterMode((prev) => {
+      const next = !prev;
+      triggerToast(next ? 'Theater Mode Active' : 'Default View');
+      return next;
+    });
+  }, []);
+
+  const handleStartOver = useCallback(() => {
+    virtualOffsetRef.current = 0;
+    setCurrentTime(0);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+    if (onTimeUpdate) {
+      onTimeUpdate(0, totalDurationRef.current);
+    }
+    triggerToast('Restarting from 00:00');
+  }, [onTimeUpdate]);
 
   const handleSelectSpeed = (s: number) => {
     setPlaybackSpeed(s);
@@ -501,6 +531,12 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
     setShowSpeedMenu(false);
     triggerToast(`${s}x Speed`);
+  };
+
+  const handleSelectQuality = (q: 'auto' | '1080p' | '720p' | '480p') => {
+    setVideoQuality(q);
+    setShowQualityMenu(false);
+    triggerToast(`Quality: ${q === 'auto' ? 'Auto (1080p 60fps)' : q}`);
   };
 
   const handleSelectAudioTrack = (trackId: string) => {
@@ -528,12 +564,14 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     });
   };
 
-  // Keyboard shortcut listener
+  // Keyboard Shortcuts Listener (using Refs to ensure zero stale state)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      switch (e.key.toLowerCase()) {
+      const key = e.key.toLowerCase();
+
+      switch (key) {
         case ' ':
         case 'k':
           e.preventDefault();
@@ -543,34 +581,67 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           e.preventDefault();
           toggleFullscreen();
           break;
+        case 't':
+          e.preventDefault();
+          toggleTheaterMode();
+          break;
         case 'm':
           e.preventDefault();
           toggleMute();
           break;
+        case 'j':
         case 'arrowleft':
           e.preventDefault();
           seekRelative(-10);
           break;
+        case 'l':
         case 'arrowright':
           e.preventDefault();
           seekRelative(10);
           break;
         case 'arrowup':
           e.preventDefault();
-          handleVolumeChange(Math.min(1, volume + 0.1));
+          handleVolumeChange(volumeRef.current + 0.1);
           break;
         case 'arrowdown':
           e.preventDefault();
-          handleVolumeChange(Math.max(0, volume - 0.1));
+          handleVolumeChange(volumeRef.current - 0.1);
+          break;
+        case 's':
+          e.preventDefault();
+          seekRelative(85);
+          break;
+        case 'r':
+          e.preventDefault();
+          handleStartOver();
           break;
         case 'c':
           e.preventDefault();
           setActiveSubtitleTrackId((prev) => (prev === 'off' ? 'sub-en' : 'off'));
+          triggerToast(activeSubtitleTrackId === 'off' ? 'Subtitles On' : 'Subtitles Off');
           break;
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9': {
+          e.preventDefault();
+          const targetPercent = parseInt(key, 10) * 0.1;
+          const targetSeconds = Math.round(targetPercent * totalDurationRef.current);
+          virtualOffsetRef.current = 0;
+          setCurrentTime(targetSeconds);
+          if (videoRef.current) {
+            videoRef.current.currentTime = targetSeconds;
+          }
+          triggerToast(`Seek: ${parseInt(key, 10) * 10}% (${formatTime(targetSeconds)})`);
+          break;
+        }
         case 'escape':
           setShowAudioSubtitleModal(false);
           setShowSpeedMenu(false);
+          setShowQualityMenu(false);
           setShowEpisodesDrawer(false);
+          if (document.fullscreenElement) {
+            document.exitFullscreen?.();
+            setIsFullscreen(false);
+          }
           break;
         default:
           break;
@@ -579,14 +650,23 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [volume, isMuted, isPlaying]);
+  }, [
+    togglePlay,
+    toggleFullscreen,
+    toggleTheaterMode,
+    toggleMute,
+    seekRelative,
+    handleVolumeChange,
+    handleStartOver,
+    activeSubtitleTrackId,
+  ]);
 
-  // Auto-hide controls
+  // Auto-hide controls timer
   const handleMouseMove = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying && !showAudioSubtitleModal && !showSpeedMenu && !showEpisodesDrawer) {
+      if (isPlayingRef.current && !showAudioSubtitleModal && !showSpeedMenu && !showQualityMenu && !showEpisodesDrawer) {
         setShowControls(false);
       }
     }, 3500);
@@ -596,9 +676,11 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="relative w-screen h-screen bg-black overflow-hidden select-none cursor-default"
+      className={`relative bg-black overflow-hidden select-none cursor-default transition-all duration-300 ${
+        isTheaterMode ? 'fixed inset-0 z-50 w-screen h-screen' : 'w-screen h-screen'
+      }`}
     >
-      {/* Primary Video / Audio Element Engine */}
+      {/* Primary Video Engine */}
       <div className="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden">
         {playbackMode === 'video' ? (
           <video
@@ -615,13 +697,28 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             onPlay={() => {
               setIsPlaying(true);
               setStreamBuffering(false);
+              setVideoError(false);
             }}
             onPause={() => setIsPlaying(false)}
             onEnded={handleVideoEnded}
             onError={handleVideoError}
-            onWaiting={() => setStreamBuffering(true)}
-            onPlaying={() => setStreamBuffering(false)}
-            onCanPlay={() => setStreamBuffering(false)}
+            onWaiting={() => {
+              setStreamBuffering(true);
+              if (stallTimeoutRef.current) clearTimeout(stallTimeoutRef.current);
+              stallTimeoutRef.current = setTimeout(() => {
+                if (videoRef.current && videoRef.current.readyState < 3) {
+                  handleVideoError();
+                }
+              }, 10000);
+            }}
+            onPlaying={() => {
+              setStreamBuffering(false);
+              if (stallTimeoutRef.current) clearTimeout(stallTimeoutRef.current);
+            }}
+            onCanPlay={() => {
+              setStreamBuffering(false);
+              if (stallTimeoutRef.current) clearTimeout(stallTimeoutRef.current);
+            }}
             className="w-full h-full object-contain"
           >
             {availableSubtitles.map((track) => (
@@ -646,8 +743,54 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           />
         )}
 
+        {/* Stream Load Error Recoverable Card */}
+        {videoError && playbackMode === 'video' && (
+          <div className="absolute inset-0 z-40 bg-black/90 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+            <div className="max-w-md bg-zinc-900 border border-zinc-700/80 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+              <div className="w-12 h-12 rounded-full bg-red-600/20 text-red-500 border border-red-500/40 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h2 className="text-white font-bold text-lg">Stream Connection Interrupted</h2>
+              <p className="text-zinc-400 text-xs mt-2 leading-relaxed">
+                The current media server encountered a network delay or CORS block. Select a backup server or switch to official trailer presentation.
+              </p>
+              <div className="flex items-center justify-center gap-3 mt-5">
+                <button
+                  onClick={() => {
+                    const next = (retryCountRef.current + 1) % STREAM_POOL.length;
+                    setCurrentSrc(STREAM_POOL[next]);
+                    setVideoError(false);
+                    triggerToast('Retrying stream server...');
+                    setTimeout(() => {
+                      if (videoRef.current) {
+                        videoRef.current.load();
+                        videoRef.current.play().catch(() => {});
+                      }
+                    }, 300);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-lg cursor-pointer transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Retry Server</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setPlaybackMode('trailer');
+                    setVideoError(false);
+                    triggerToast('Switched to Trailer');
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 cursor-pointer transition-colors"
+                >
+                  <Film className="w-4 h-4" />
+                  <span>Play Trailer</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stream Buffering Spinner */}
-        {streamBuffering && playbackMode === 'video' && (
+        {streamBuffering && playbackMode === 'video' && !videoError && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 bg-black/40 backdrop-blur-[2px]">
             <div className="flex flex-col items-center gap-3">
               <div className="w-12 h-12 border-3 border-red-600 border-t-transparent rounded-full animate-spin shadow-2xl" />
@@ -662,14 +805,14 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       {/* Cinematic Vignette Overlay */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/80 via-transparent to-black/60" />
 
-      {/* Synchronized Subtitle Display Overlay (Positioned Safely Above Controls) */}
+      {/* Synchronized Subtitle Display Overlay */}
       {currentSubtitleText && activeSubtitleTrackId !== 'off' && (
         <div
           className={`absolute left-0 right-0 z-20 flex justify-center pointer-events-none transition-all duration-300 px-4 ${
             showControls ? 'bottom-24 sm:bottom-28' : 'bottom-16 sm:bottom-20'
           }`}
         >
-          <div className="bg-black/75 text-white px-4 py-1.5 rounded-md backdrop-blur-sm shadow-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-base sm:text-lg md:text-2xl font-semibold max-w-[80%] mx-auto text-center tracking-wide leading-relaxed animate-in fade-in duration-200">
+          <div className="bg-black/85 text-white px-4 py-1.5 rounded-md backdrop-blur-sm shadow-lg border border-zinc-800/80 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-base sm:text-lg md:text-2xl font-semibold max-w-[80%] mx-auto text-center tracking-wide leading-relaxed animate-in fade-in duration-200">
             {currentSubtitleText}
           </div>
         </div>
@@ -683,7 +826,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Top Bar Navigation & Info */}
+      {/* Top Navigation & Controls Bar */}
       <div
         className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-6 transition-opacity duration-300 bg-gradient-to-b from-black/90 to-transparent ${
           showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -694,7 +837,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             <button
               onClick={onBack}
               aria-label="Back"
-              className="p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-white backdrop-blur-md transition-all hover:scale-105 cursor-pointer shadow-lg"
+              className="p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-white backdrop-blur-md transition-all hover:scale-105 cursor-pointer shadow-lg border border-zinc-700/60"
             >
               <RotateCcw className="w-5 h-5 -rotate-90" />
             </button>
@@ -722,12 +865,13 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           </div>
         </div>
 
-        {/* Source Mode Toggle (High-Bitrate Direct Stream vs Official Trailer) */}
+        {/* Source Mode Toggle (Master Stream vs Trailer) */}
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center bg-zinc-900/80 border border-zinc-700/80 rounded-full p-1 backdrop-blur-md">
             <button
               onClick={() => {
                 setPlaybackMode('video');
+                setVideoError(false);
                 triggerToast('Mode: Direct Master Stream');
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
@@ -741,6 +885,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             <button
               onClick={() => {
                 setPlaybackMode('trailer');
+                setVideoError(false);
                 triggerToast('Mode: Official Cinema Trailer');
               }}
               className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
@@ -755,7 +900,18 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         </div>
       </div>
 
-      {/* Skip Intro Button (Visible in early playback) */}
+      {/* Tap-to-unmute prompt */}
+      {showUnmutePrompt && isMuted && playbackMode === 'video' && (
+        <button
+          onClick={toggleMute}
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-900/90 border border-zinc-700 text-white text-sm font-medium shadow-2xl backdrop-blur-md hover:bg-zinc-800 transition-colors cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-300"
+        >
+          <VolumeX className="w-4 h-4 text-red-500" />
+          <span>Tap to unmute</span>
+        </button>
+      )}
+
+      {/* Skip Intro Button */}
       {currentTime >= 5 && currentTime <= 95 && showControls && (
         <button
           onClick={() => seekRelative(85)}
@@ -772,14 +928,24 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
-        {/* Progress Bar & Scrubbing */}
+        {/* Progress Bar with Seek Hover Timestamp Preview */}
         <div className="group/progress relative flex items-center mb-4 cursor-pointer">
+          {hoverTime !== null && (
+            <div
+              className="absolute -top-9 z-40 -translate-x-1/2 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-xs font-mono font-bold shadow-xl pointer-events-none"
+              style={{ left: `${hoverPosition}%` }}
+            >
+              {formatTime(hoverTime)}
+            </div>
+          )}
           <input
             type="range"
             min={0}
             max={totalDuration || 100}
             value={currentTime}
             onChange={handleSeek}
+            onMouseMove={handleSeekHover}
+            onMouseLeave={handleSeekLeave}
             aria-label="Seek time"
             className="w-full h-1.5 bg-zinc-700/60 rounded-full appearance-none accent-red-600 hover:h-2.5 transition-all cursor-pointer"
             style={{
@@ -790,7 +956,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
 
         {/* Buttons and Menu Controls */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-3 sm:gap-5">
             {/* Play / Pause */}
             <button
               onClick={togglePlay}
@@ -800,10 +966,21 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
               {isPlaying ? <Pause className="w-5 h-5 fill-black" /> : <Play className="w-5 h-5 fill-black ml-0.5" />}
             </button>
 
+            {/* Start Over Button */}
+            <button
+              onClick={handleStartOver}
+              aria-label="Start Over"
+              title="Start Over (R)"
+              className="p-2 rounded-lg bg-zinc-850 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700/70 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+
             {/* Rewind 10s */}
             <button
               onClick={() => seekRelative(-10)}
               aria-label="Rewind 10 seconds"
+              title="Rewind 10s (J / ←)"
               className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
             >
               <RotateCcw className="w-5 h-5" />
@@ -813,6 +990,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             <button
               onClick={() => seekRelative(10)}
               aria-label="Forward 10 seconds"
+              title="Forward 10s (L / →)"
               className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
             >
               <RotateCw className="w-5 h-5" />
@@ -823,6 +1001,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
               <button
                 onClick={toggleMute}
                 aria-label={isMuted ? 'Unmute' : 'Mute'}
+                title="Mute / Unmute (M)"
                 className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
               >
                 {isMuted || volume === 0 ? <VolumeX className="w-5 h-5 text-red-500" /> : <Volume2 className="w-5 h-5" />}
@@ -845,7 +1024,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-5">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* TV Show Episodes Drawer Toggle */}
             {isSeries && seasonsData.length > 0 && (
               <button
@@ -874,6 +1053,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
               onClick={() => {
                 setShowAudioSubtitleModal((prev) => !prev);
                 setShowSpeedMenu(false);
+                setShowQualityMenu(false);
               }}
               aria-label="Audio & Subtitles"
               className={`flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-md transition-all cursor-pointer ${
@@ -892,6 +1072,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 onClick={() => {
                   setShowSpeedMenu((prev) => !prev);
                   setShowAudioSubtitleModal(false);
+                  setShowQualityMenu(false);
                 }}
                 className="text-zinc-300 hover:text-white text-xs sm:text-sm font-medium px-2.5 py-1.5 rounded-md hover:bg-zinc-800/80 transition-colors cursor-pointer"
               >
@@ -919,10 +1100,66 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
               )}
             </div>
 
+            {/* Video Quality Selector */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowQualityMenu((prev) => !prev);
+                  setShowAudioSubtitleModal(false);
+                  setShowSpeedMenu(false);
+                }}
+                aria-label="Video Quality"
+                title="Video Quality"
+                className="flex items-center gap-1 text-zinc-300 hover:text-white text-xs sm:text-sm font-medium px-2.5 py-1.5 rounded-md hover:bg-zinc-800/80 transition-colors cursor-pointer"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="hidden lg:inline capitalize">{videoQuality}</span>
+              </button>
+
+              {showQualityMenu && (
+                <div className="absolute right-0 bottom-12 w-44 bg-zinc-900 border border-zinc-700/80 rounded-lg shadow-2xl py-1 z-40 backdrop-blur-md">
+                  <div className="px-3 py-1.5 text-[11px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 flex items-center justify-between">
+                    <span>Video Quality</span>
+                    <Monitor className="w-3.5 h-3.5 text-zinc-500" />
+                  </div>
+                  {[
+                    { id: 'auto', label: 'Auto (1080p 60fps)' },
+                    { id: '1080p', label: '1080p Full HD' },
+                    { id: '720p', label: '720p HD' },
+                    { id: '480p', label: '480p SD' },
+                  ].map((q) => (
+                    <button
+                      key={q.id}
+                      onClick={() => handleSelectQuality(q.id as any)}
+                      className={`w-full flex items-center justify-between px-3 py-1.5 text-xs transition-colors cursor-pointer ${
+                        videoQuality === q.id ? 'text-red-500 font-bold bg-zinc-800/60' : 'text-zinc-300 hover:bg-zinc-800'
+                      }`}
+                    >
+                      <span>{q.label}</span>
+                      {videoQuality === q.id && <Check className="w-3.5 h-3.5 text-red-500" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Theater Mode Toggle */}
+            <button
+              onClick={toggleTheaterMode}
+              aria-label="Theater Mode"
+              title="Theater Mode (T)"
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                isTheaterMode ? 'text-red-500 bg-zinc-800' : 'text-zinc-300 hover:text-white hover:bg-zinc-800/80'
+              }`}
+            >
+              <Tv className="w-5 h-5" />
+            </button>
+
             {/* Fullscreen Toggle */}
             <button
               onClick={toggleFullscreen}
               aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              title="Fullscreen (F)"
               className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
             >
               {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
@@ -931,7 +1168,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         </div>
       </div>
 
-      {/* Netflix-Style Audio & Subtitles Selection Dialog */}
+      {/* Audio & Subtitles Selection Dialog */}
       {showAudioSubtitleModal && (
         <div className="absolute right-6 bottom-24 z-50 w-[92vw] max-w-lg bg-zinc-900/95 border border-zinc-700/90 rounded-xl shadow-2xl p-5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
@@ -985,7 +1222,6 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 <span className="text-[10px] text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">Synced</span>
               </div>
               <div className="space-y-1">
-                {/* Off Option */}
                 <button
                   onClick={() => handleSelectSubtitle('off')}
                   className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-all cursor-pointer ${
@@ -1017,7 +1253,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 })}
               </div>
 
-              {/* Subtitle Audio Sync Offset Fine-Tuning */}
+              {/* Subtitle Sync Calibration */}
               {activeSubtitleTrackId !== 'off' && (
                 <div className="mt-4 pt-3 border-t border-zinc-800">
                   <div className="flex items-center justify-between mb-2">
@@ -1068,22 +1304,17 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 Healthy
               </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {[
-                { name: 'CDN Alpha', url: RELIABLE_STREAMS.default, label: 'Primary' },
-                { name: 'CDN Beta', url: RELIABLE_STREAMS.tears, label: 'Sci-Fi' },
-                { name: 'CDN Gamma', url: RELIABLE_STREAMS.sintel, label: 'Fantasy' },
-                { name: 'CDN Delta', url: RELIABLE_STREAMS.elephants, label: 'Action' },
-                { name: 'CDN Epsilon', url: RELIABLE_STREAMS.blazes, label: 'High-Bitrate' },
-              ].map((server) => {
-                const isCur = currentSrc === server.url;
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {STREAM_POOL.slice(0, 4).map((url, idx) => {
+                const names = ['Primary CDN Alpha', 'CDN Beta (Sci-Fi)', 'CDN Gamma (Fantasy)', 'CDN Delta (Action)'];
+                const isCur = currentSrc === url;
                 return (
                   <button
-                    key={server.name}
+                    key={url}
                     onClick={() => {
-                      setCurrentSrc(server.url);
+                      setCurrentSrc(url);
                       setVideoError(false);
-                      triggerToast(`Switched to ${server.name} (${server.label})`);
+                      triggerToast(`Switched to Server ${idx + 1}`);
                       if (videoRef.current) {
                         videoRef.current.load();
                         videoRef.current.play().catch(() => {});
@@ -1095,8 +1326,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                         : 'bg-zinc-800/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-transparent'
                     }`}
                   >
-                    <span className="truncate">{server.name}</span>
-                    <span className="text-[9px] text-zinc-500">{server.label}</span>
+                    <span className="truncate">{names[idx]}</span>
+                    <span className="text-[9px] text-zinc-500">Server {idx + 1}</span>
                   </button>
                 );
               })}
@@ -1105,7 +1336,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Episodes Drawer (TV Series) */}
+      {/* Episodes Drawer */}
       {showEpisodesDrawer && isSeries && seasonsData.length > 0 && (
         <div className="absolute top-0 right-0 bottom-0 w-full sm:w-96 bg-zinc-950/95 border-l border-zinc-800 z-50 p-6 flex flex-col backdrop-blur-xl animate-in slide-in-from-right duration-200">
           <div className="flex items-center justify-between pb-4 border-b border-zinc-800">

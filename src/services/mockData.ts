@@ -3,11 +3,25 @@ import { MediaItem, Season, CastMember, CrewMember, AudioTrack, SubtitleTrack } 
 // Verified, high-availability public test streams:
 export const RELIABLE_STREAMS = {
   default: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  sintel: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
   tears: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+  sintel: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
   elephants: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  blazes: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+  blazes: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+  subaru: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+  joyrides: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+  ocean: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
 };
+
+export const STREAM_POOL = [
+  RELIABLE_STREAMS.default,
+  RELIABLE_STREAMS.tears,
+  RELIABLE_STREAMS.sintel,
+  RELIABLE_STREAMS.elephants,
+  RELIABLE_STREAMS.blazes,
+  RELIABLE_STREAMS.subaru,
+  RELIABLE_STREAMS.joyrides,
+  RELIABLE_STREAMS.ocean
+];
 
 export const STREAM_BIG_BUCK_BUNNY = RELIABLE_STREAMS.default;
 export const STREAM_SINTEL = RELIABLE_STREAMS.sintel;
