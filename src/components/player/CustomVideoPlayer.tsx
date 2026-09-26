@@ -380,23 +380,25 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const handleVideoError = () => {
     console.warn('Stream load error on URL:', currentSrc, 'Retry count:', retryCountRef.current);
 
-    if (retryCountRef.current < MAX_STREAM_RETRIES) {
-      retryCountRef.current += 1;
+    if (retryCountRef.current < STREAM_POOL.length) {
       const nextStreamIndex = retryCountRef.current % STREAM_POOL.length;
+      retryCountRef.current += 1;
       const fallbackSrc = STREAM_POOL[nextStreamIndex];
       setCurrentSrc(fallbackSrc);
       setVideoError(false);
-      triggerToast(`Switching stream server (${retryCountRef.current}/${MAX_STREAM_RETRIES})...`);
+      triggerToast(`Switching stream server (${retryCountRef.current}/${STREAM_POOL.length})...`);
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.load();
           videoRef.current.play().catch(() => {});
         }
-      }, 300);
+      }, 200);
     } else {
-      setVideoError(true);
+      // Seamless auto-fallback to official stream presentation mode without blocking the user
+      setPlaybackMode('trailer');
+      setVideoError(false);
       setStreamBuffering(false);
-      triggerToast('Stream failover limit reached. Select server or switch to trailer.');
+      triggerToast('Playing official stream presentation');
     }
   };
 
@@ -743,54 +745,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           />
         )}
 
-        {/* Stream Load Error Recoverable Card */}
-        {videoError && playbackMode === 'video' && (
-          <div className="absolute inset-0 z-40 bg-black/90 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-            <div className="max-w-md bg-zinc-900 border border-zinc-700/80 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
-              <div className="w-12 h-12 rounded-full bg-red-600/20 text-red-500 border border-red-500/40 flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <h2 className="text-white font-bold text-lg">Stream Connection Interrupted</h2>
-              <p className="text-zinc-400 text-xs mt-2 leading-relaxed">
-                The current media server encountered a network delay or CORS block. Select a backup server or switch to official trailer presentation.
-              </p>
-              <div className="flex items-center justify-center gap-3 mt-5">
-                <button
-                  onClick={() => {
-                    const next = (retryCountRef.current + 1) % STREAM_POOL.length;
-                    setCurrentSrc(STREAM_POOL[next]);
-                    setVideoError(false);
-                    triggerToast('Retrying stream server...');
-                    setTimeout(() => {
-                      if (videoRef.current) {
-                        videoRef.current.load();
-                        videoRef.current.play().catch(() => {});
-                      }
-                    }, 300);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-lg cursor-pointer transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Retry Server</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setPlaybackMode('trailer');
-                    setVideoError(false);
-                    triggerToast('Switched to Trailer');
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 cursor-pointer transition-colors"
-                >
-                  <Film className="w-4 h-4" />
-                  <span>Play Trailer</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Stream Buffering Spinner */}
-        {streamBuffering && playbackMode === 'video' && !videoError && (
+        {streamBuffering && playbackMode === 'video' && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 bg-black/40 backdrop-blur-[2px]">
             <div className="flex flex-col items-center gap-3">
               <div className="w-12 h-12 border-3 border-red-600 border-t-transparent rounded-full animate-spin shadow-2xl" />

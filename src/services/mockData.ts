@@ -13,14 +13,13 @@ export const RELIABLE_STREAMS = {
 };
 
 export const STREAM_POOL = [
-  RELIABLE_STREAMS.default,
-  RELIABLE_STREAMS.tears,
-  RELIABLE_STREAMS.sintel,
-  RELIABLE_STREAMS.elephants,
-  RELIABLE_STREAMS.blazes,
-  RELIABLE_STREAMS.subaru,
-  RELIABLE_STREAMS.joyrides,
-  RELIABLE_STREAMS.ocean
+  "https://vjs.zencdn.net/v/oceans.mp4",
+  "https://media.w3.org/2010/05/sintel/trailer.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
 ];
 
 export const STREAM_BIG_BUCK_BUNNY = RELIABLE_STREAMS.default;
