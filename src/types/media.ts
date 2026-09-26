@@ -41,6 +41,22 @@ export interface Season {
   overview?: string;
 }
 
+export interface AudioTrack {
+  id: string;
+  language: string; // 'English', 'Spanish', 'Hindi', 'French', 'German', 'Japanese'
+  code: string;     // 'en', 'es', 'hi', 'fr', 'de', 'ja'
+  src: string;      // Audio stream or video stream URL for dubbed track
+  isDefault?: boolean;
+}
+
+export interface SubtitleTrack {
+  id: string;
+  language: string;
+  code: string;
+  cues: Array<{ start: number; end: number; text: string }>;
+  isDefault?: boolean;
+}
+
 export interface MediaItem {
   id: number;
   title?: string;
@@ -55,6 +71,10 @@ export interface MediaItem {
   genre_ids: number[];
   // Extended fields for rich modal & watch experiences
   video_url?: string;
+  videoUrl?: string;
+  audio_tracks?: AudioTrack[];
+  audioTracks?: AudioTrack[];
+  subtitles?: SubtitleTrack[];
   trailer_key?: string;
   maturity_rating?: string;
   match_percentage?: number;

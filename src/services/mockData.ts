@@ -1,4 +1,164 @@
-import { MediaItem, Season, CastMember, CrewMember } from '../types/media';
+import { MediaItem, Season, CastMember, CrewMember, AudioTrack, SubtitleTrack } from '../types/media';
+
+export const DEFAULT_FALLBACK_STREAM = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+
+export const ITEM_VIDEO_URLS: Record<number, string> = {
+  101: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+  102: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+  103: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4',
+  104: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+  105: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  106: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+  107: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+  108: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+  109: 'https://cdn.jsdelivr.net/gh/mediaelement/mediaelement-files@master/big_buck_bunny.mp4',
+  110: 'https://cdn.jsdelivr.net/gh/mediaelement/mediaelement-files@master/echo-hereweare.mp4',
+  111: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+  112: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+  113: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  114: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  115: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+  116: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+};
+
+export function getDefaultAudioTracks(mediaId: number | string, baseVideoUrl: string): AudioTrack[] {
+  return [
+    {
+      id: `${mediaId}-audio-en`,
+      language: 'English [Original 5.1]',
+      code: 'en',
+      src: baseVideoUrl,
+      isDefault: true,
+    },
+    {
+      id: `${mediaId}-audio-es`,
+      language: 'Spanish (Español Latino)',
+      code: 'es',
+      src: baseVideoUrl,
+    },
+    {
+      id: `${mediaId}-audio-hi`,
+      language: 'Hindi (हिन्दी Dubbed)',
+      code: 'hi',
+      src: baseVideoUrl,
+    },
+    {
+      id: `${mediaId}-audio-fr`,
+      language: 'French (Français V.F.)',
+      code: 'fr',
+      src: baseVideoUrl,
+    },
+    {
+      id: `${mediaId}-audio-de`,
+      language: 'German (Deutsch)',
+      code: 'de',
+      src: baseVideoUrl,
+    },
+    {
+      id: `${mediaId}-audio-ja`,
+      language: 'Japanese (日本語 吹替)',
+      code: 'ja',
+      src: baseVideoUrl,
+    },
+  ];
+}
+
+export function getDefaultSubtitles(mediaId: number | string, title: string): SubtitleTrack[] {
+  return [
+    {
+      id: `${mediaId}-sub-en`,
+      language: 'English [CC]',
+      code: 'en',
+      isDefault: true,
+      cues: [
+        { start: 2, end: 7, text: '[Atmospheric cinematic soundtrack rises slowly]' },
+        { start: 8, end: 15, text: `${title}: "Every choice we make ripples across the infinite horizon."` },
+        { start: 16, end: 23, text: '"We were never meant to stand still. We were born to explore."' },
+        { start: 24, end: 32, text: '[Deep pulsing cinematic bass vibrating]' },
+        { start: 33, end: 41, text: '"Trajectory locked. Systems nominal in 3... 2... 1..."' },
+        { start: 42, end: 50, text: '[Thrusters ignite with blinding brilliance and roar to life]' },
+        { start: 51, end: 60, text: '"Whatever happens on the other side... remember why we started."' },
+        { start: 61, end: 72, text: '"Do not look back. The future is waiting for us."' },
+      ],
+    },
+    {
+      id: `${mediaId}-sub-es`,
+      language: 'Spanish (Español)',
+      code: 'es',
+      cues: [
+        { start: 2, end: 7, text: '[Música cinematográfica atmosférica en aumento]' },
+        { start: 8, end: 15, text: `${title}: "Cada decisión que tomamos resuena en el horizonte infinito."` },
+        { start: 16, end: 23, text: '"Nunca estuvimos destinados a quedarnos quietos. Nacimos para explorar."' },
+        { start: 24, end: 32, text: '[Vibraciones intensas de frecuencias bajas]' },
+        { start: 33, end: 41, text: '"Trayectoria fijada. Sistemas nominales en 3... 2... 1..."' },
+        { start: 42, end: 50, text: '[Los propulsores se encienden con fuerza]' },
+        { start: 51, end: 60, text: '"Pase lo que pase al otro lado... recuerda por qué empezamos."' },
+        { start: 61, end: 72, text: '"No mires atrás. El futuro nos está esperando."' },
+      ],
+    },
+    {
+      id: `${mediaId}-sub-hi`,
+      language: 'Hindi (हिन्दी)',
+      code: 'hi',
+      cues: [
+        { start: 2, end: 7, text: '[गहन सिनेमाई संगीत की गूंज]' },
+        { start: 8, end: 15, text: `${title}: "हमारा हर फैसला इस अनंत क्षितिज पर असर डालता है।"` },
+        { start: 16, end: 23, text: '"हम ठहरने के लिए नहीं, बल्कि सीमाओं को पार करने के लिए बने हैं।"' },
+        { start: 24, end: 32, text: '[शक्तिशाली ध्वनि कंपन]' },
+        { start: 33, end: 41, text: '"कक्षा प्रज्वलन की तैयारी करें। उल्टी गिनती: 3... 2... 1..."' },
+        { start: 42, end: 50, text: '[रॉकेट इंजनों की प्रचंड गर्जना]' },
+        { start: 51, end: 60, text: '"दूसरी तरफ चाहे कुछ भी हो... याद रखना हम क्यों निकले थे।"' },
+        { start: 61, end: 72, text: '"पीछे मुड़कर मत देखो। हमारा भविष्य तैयार है।"' },
+      ],
+    },
+    {
+      id: `${mediaId}-sub-fr`,
+      language: 'French (Français)',
+      code: 'fr',
+      cues: [
+        { start: 2, end: 7, text: '[Musique orchestrale atmosphérique en crescendo]' },
+        { start: 8, end: 15, text: `${title}: "Chaque choix résonne à travers l'horizon infini."` },
+        { start: 16, end: 23, text: '"Nous n\'étions pas faits pour rester immobiles. Nous sommes nés pour explorer."' },
+        { start: 24, end: 32, text: '[Vibrations de basses profondes]' },
+        { start: 33, end: 41, text: '"Trajectoire confirmée. Systèmes prêts dans 3... 2... 1..."' },
+        { start: 42, end: 50, text: '[Les réacteurs s\'allument dans un éclat aveuglant]' },
+        { start: 51, end: 60, text: '"Quoi qu\'il arrive de l\'autre côté... souvenez-vous de notre but."' },
+        { start: 61, end: 72, text: '"Ne regardez pas en arrière. L\'avenir nous attend."' },
+      ],
+    },
+    {
+      id: `${mediaId}-sub-de`,
+      language: 'German (Deutsch)',
+      code: 'de',
+      cues: [
+        { start: 2, end: 7, text: '[Atmosphärische orchestrale Musik schwillt an]' },
+        { start: 8, end: 15, text: `${title}: "Jede Entscheidung hallt über den unendlichen Horizont wider."` },
+        { start: 16, end: 23, text: '"Wir wurden nicht geboren, um stillzustehen. Wir wurden geboren, um zu forschen."' },
+        { start: 24, end: 32, text: '[Intensive Bassfrequenzen]' },
+        { start: 33, end: 41, text: '"Trajektorie verriegelt. Systeme bereit in 3... 2... 1..."' },
+        { start: 42, end: 50, text: '[Triebwerke entflammen mit gewaltiger Energie]' },
+        { start: 51, end: 60, text: '"Was auch immer drüben geschieht... vergesst nicht, warum wir begannen."' },
+        { start: 61, end: 72, text: '"Blickt nicht zurück. Die Zukunft erwartet uns."' },
+      ],
+    },
+    {
+      id: `${mediaId}-sub-ja`,
+      language: 'Japanese (日本語)',
+      code: 'ja',
+      cues: [
+        { start: 2, end: 7, text: '[荘厳な映画音楽が高まる]' },
+        { start: 8, end: 15, text: `${title}: 「私たちの選んだ道は、無限の地平線に響き渡る。」` },
+        { start: 16, end: 23, text: `「立ち止まるために生まれたのではない。未知を切り拓くために生まれた。」` },
+        { start: 24, end: 32, text: `[重低音の振動が空間を満たす]` },
+        { start: 33, end: 41, text: `「軌道推進点火準備。カウントダウン: 3... 2... 1...」` },
+        { start: 42, end: 50, text: `[エンジンが眩い光と共に点火]` },
+        { start: 51, end: 60, text: `「向こう側で何が起きようと、旅立った理由を忘れるな。」` },
+        { start: 61, end: 72, text: `「振り返るな。未来が私たちを待っている。」` },
+      ],
+    },
+  ];
+}
+
 
 /**
  * Generate rich seasons and episodes for TV series
@@ -108,7 +268,7 @@ export function getOrGenerateCastAndCrew(mediaId: number, title?: string): { cas
   return { cast_members, crew_members };
 }
 
-export const MOCK_MEDIA_ITEMS: MediaItem[] = [
+const RAW_MOCK_ITEMS: MediaItem[] = [
   {
     id: 101,
     title: 'Interstellar: Beyond The Horizon',
@@ -346,7 +506,7 @@ export const MOCK_MEDIA_ITEMS: MediaItem[] = [
     release_date: '2022-03-04',
     media_type: 'movie',
     genre_ids: [80, 9648, 28],
-    trailer_key: 'mqqft2x_Aa4',
+    trailer_key: 'EXeTwQWrcwY',
     maturity_rating: 'PG-13',
     match_percentage: 92,
     duration: '2h 56m',
@@ -627,3 +787,18 @@ export const MOCK_MEDIA_ITEMS: MediaItem[] = [
     ],
   },
 ];
+
+export const MOCK_MEDIA_ITEMS: MediaItem[] = RAW_MOCK_ITEMS.map((item) => {
+  const vidUrl = ITEM_VIDEO_URLS[item.id] || DEFAULT_FALLBACK_STREAM;
+  const audioTracks = item.audio_tracks || item.audioTracks || getDefaultAudioTracks(item.id, vidUrl);
+  const subtitles = item.subtitles || getDefaultSubtitles(item.id, item.title || item.name || 'CineStream');
+  return {
+    ...item,
+    video_url: item.video_url || item.videoUrl || vidUrl,
+    videoUrl: item.videoUrl || item.video_url || vidUrl,
+    audio_tracks: audioTracks,
+    audioTracks: audioTracks,
+    subtitles: subtitles,
+  };
+});
+

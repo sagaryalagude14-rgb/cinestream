@@ -1,556 +1,22 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Play,
-  Pause,
-  RotateCcw,
-  RotateCw,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
-  Subtitles,
-  Check,
-  Film,
-  FastForward,
-  SkipForward,
-  RotateCcw as ReplayIcon,
-  CheckCircle2,
-  Tv,
-  X,
-  ChevronDown,
-  Clock,
-  ListVideo,
-} from 'lucide-react';
+import { RotateCcw as ReplayIcon, Play, CheckCircle2, Film } from 'lucide-react';
 import { fetchMediaDetails } from '../services/tmdbApi';
 import { MediaItem, Season, Episode } from '../types/media';
-import { getDisplayTitle, formatYear } from '../utils/constants';
+import { getDisplayTitle } from '../utils/constants';
 import { useWatchHistory } from '../context/WatchHistoryContext';
-import { MOCK_MEDIA_ITEMS, getOrGenerateSeasons } from '../services/mockData';
+import { getOrGenerateSeasons } from '../services/mockData';
+import { CustomVideoPlayer } from '../components/player/CustomVideoPlayer';
 
-interface CaptionCue {
-  start: number;
-  end: number;
-  translations: Record<string, string>;
-}
-
-const TRAILER_SUBTITLES: Record<string, CaptionCue[]> = {
-  // Interstellar (trailerKey: 'zSWdZVtXT7E') - Synchronized with official audio
-  zSWdZVtXT7E: [
-    {
-      start: 1,
-      end: 6,
-      translations: {
-        'English [CC]': '[Soft acoustic guitar strumming, clock ticking rhythmically]',
-        Spanish: '[Guitarra acústica melancólica rasgueando suavemente]',
-        French: '[Guitare acoustique mélancolique, tic-tac régulier]',
-        German: '[Sanfte Akustikgitarre, rhythmisches Uhrenticken]',
-      },
-    },
-    {
-      start: 7,
-      end: 14,
-      translations: {
-        'English [CC]': 'Cooper: "We used to look up at the sky and wonder at our place in the stars..."',
-        Spanish: 'Cooper: "Solíamos mirar al cielo y preguntarnos por nuestro lugar en las estrellas..."',
-        French: 'Cooper: "On avait l\'habitude de lever les yeux au ciel et de contempler les étoiles..."',
-        German: 'Cooper: "Früher blickten wir zum Himmel und fragten uns nach unserem Platz..."',
-      },
-    },
-    {
-      start: 15,
-      end: 22,
-      translations: {
-        'English [CC]': 'Cooper: "...now we just look down and worry about our place in the dirt."',
-        Spanish: 'Cooper: "...ahora solo miramos abajo, preocupados por nuestro lugar en la tierra."',
-        French: 'Cooper: "...maintenant nous baissons les yeux, inquiets de notre place dans la poussière."',
-        German: 'Cooper: "...heute schauen wir nach unten und sorgen uns um unseren Platz im Staub."',
-      },
-    },
-    {
-      start: 23,
-      end: 30,
-      translations: {
-        'English [CC]': '[Dust sirens wailing across the barren cornfields]',
-        Spanish: '[Sirenas de tormenta de polvo resuenan a lo lejos]',
-        French: '[Sirènes de tempête de poussière dans les champs]',
-        German: '[Staubsturmsirenen heulen über die vertrockneten Felder]',
-      },
-    },
-    {
-      start: 31,
-      end: 38,
-      translations: {
-        'English [CC]': 'Professor Brand: "We\'re not meant to save the world. We\'re meant to leave it."',
-        Spanish: 'Profesor Brand: "No estamos destinados a salvar el mundo. Debemos dejarlo."',
-        French: 'Professeur Brand: "Nous ne sommes pas faits pour sauver le monde. Nous devons le quitter."',
-        German: 'Professor Brand: "Wir sind nicht dazu bestimmt, die Welt zu retten, sondern sie zu verlassen."',
-      },
-    },
-    {
-      start: 39,
-      end: 47,
-      translations: {
-        'English [CC]': 'Cooper: "I got kids, Professor." / Brand: "Then go out there and save them."',
-        Spanish: 'Cooper: "Tengo hijos, profesor." / Brand: "Entonces ve allá afuera y sálvalos."',
-        French: 'Cooper: "J\'ai des enfants, professeur." / Brand: "Alors partez là-haut et sauvez-les."',
-        German: 'Cooper: "Ich habe Kinder, Professor." / Brand: "Dann fliegen Sie hinauf und retten Sie sie."',
-      },
-    },
-    {
-      start: 48,
-      end: 55,
-      translations: {
-        'English [CC]': 'Cooper: "We must reach far beyond our own lifelines."',
-        Spanish: 'Cooper: "Debemos llegar mucho más allá de nuestras propias vidas."',
-        French: 'Cooper: "Nous devons aller bien au-delà de nos propres vies."',
-        German: 'Cooper: "Wir müssen weit über unsere eigene Lebensspanne hinausgehen."',
-      },
-    },
-    {
-      start: 56,
-      end: 68,
-      translations: {
-        'English [CC]': 'Professor Brand: "Do not go gentle into that good night... Rage, rage against the dying of the light."',
-        Spanish: 'Profesor Brand: "No entres dócil en esa buena noche... Enfurece contra la agonía de la luz."',
-        French: 'Professeur Brand: "N\'entre pas sans violence dans cette douce nuit... Enrage contre la mort de la lumière."',
-        German: 'Professor Brand: "Geh nicht gelassen in die gute Nacht... Wüte gegen das Verlöschen des Lichts."',
-      },
-    },
-    {
-      start: 69,
-      end: 78,
-      translations: {
-        'English [CC]': '[Saturn V rocket boosters ignite with a thundering roar]',
-        Spanish: '[Los propulsores del cohete Saturno V se encienden con estruendo]',
-        French: '[Les propulseurs de la fusée Saturn V grondent avec force]',
-        German: '[Raketentriebwerke der Saturn V zünden mit ohrenbetäubendem Donnern]',
-      },
-    },
-    {
-      start: 79,
-      end: 88,
-      translations: {
-        'English [CC]': 'Dr. Amelia Brand: "We must think not as individuals, but as a species."',
-        Spanish: 'Dra. Amelia Brand: "No debemos pensar como individuos, sino como especie."',
-        French: 'Dr. Amelia Brand: "Nous devons penser non pas comme des individus, mais comme une espèce."',
-        German: 'Dr. Amelia Brand: "Wir müssen nicht als Individuen denken, sondern als Spezies."',
-      },
-    },
-    {
-      start: 89,
-      end: 98,
-      translations: {
-        'English [CC]': 'Cooper: "We\'ll find a way, Professor. We always have."',
-        Spanish: 'Cooper: "Encontraremos la forma, profesor. Siempre lo hemos hecho."',
-        French: 'Cooper: "Nous trouverons un moyen, professeur. Nous l\'avons toujours fait."',
-        German: 'Cooper: "Wir finden einen Weg, Professor. Das haben wir immer getan."',
-      },
-    },
-    {
-      start: 99,
-      end: 110,
-      translations: {
-        'English [CC]': '[Hans Zimmer\'s organ theme swells to a stirring crescendo]',
-        Spanish: '[El tema de órgano de Hans Zimmer alcanza un crescendo conmovedor]',
-        French: '[Le thème d\'orgue de Hans Zimmer monte en puissance]',
-        German: '[Hans Zimmers Orgel-Thema schwillt zu einem ergreifenden Crescendo an]',
-      },
-    },
-    {
-      start: 111,
-      end: 135,
-      translations: {
-        'English [CC]': '[Endurance spacecraft enters the gargantuan gravitational lensing of the wormhole]',
-        Spanish: '[La nave espacial Endurance entra en el campo gravitatorio del agujero de gusano]',
-        French: '[Le vaisseau Endurance franchit le vortex gravitationnel du trou de ver]',
-        German: '[Das Raumschiff Endurance durchquert die Gravitationslinse des Wurmlochs]',
-      },
-    },
-  ],
-
-  // Oppenheimer (trailerKey: 'uYPbbksJxIg')
-  uYPbbksJxIg: [
-    {
-      start: 2,
-      end: 8,
-      translations: {
-        'English [CC]': '[Pulsing orchestral heartbeat and radioactive Geiger counter clicks]',
-        Spanish: '[Latido orquestal pulsante y chasquidos de contador Geiger]',
-        French: '[Pulsations orchestrales et cliquetis de compteur Geiger]',
-        German: '[Pulsierender Orchester-Herzschlag und Ticken des Geigerzählers]',
-      },
-    },
-    {
-      start: 9,
-      end: 18,
-      translations: {
-        'English [CC]': 'Oppenheimer: "We imagine a future, and our imaginings horrify us."',
-        Spanish: 'Oppenheimer: "Imaginamos un futuro, y nuestras imaginaciones nos horrorizan."',
-        French: 'Oppenheimer: "Nous imaginons un avenir, et nos visions nous horrifies."',
-        German: 'Oppenheimer: "Wir stellen uns eine Zukunft vor, und unsere Vorstellungen entsetzen uns."',
-      },
-    },
-    {
-      start: 19,
-      end: 27,
-      translations: {
-        'English [CC]': 'Oppenheimer: "They won\'t fear it until they understand it..."',
-        Spanish: 'Oppenheimer: "No lo temerán hasta que lo entiendan..."',
-        French: 'Oppenheimer: "Ils n\'en auront pas peur tant qu\'ils ne le comprendront pas..."',
-        German: 'Oppenheimer: "Sie werden es nicht fürchten, bis sie es verstehen..."',
-      },
-    },
-    {
-      start: 28,
-      end: 36,
-      translations: {
-        'English [CC]': 'Oppenheimer: "...and they won\'t understand it until they\'ve used it."',
-        Spanish: 'Oppenheimer: "...y no lo entenderán hasta que lo hayan usado."',
-        French: 'Oppenheimer: "...et ils ne le comprendront pas tant qu\'ils ne l\'auront pas utilisé."',
-        German: 'Oppenheimer: "...und sie werden es nicht verstehen, bis sie es eingesetzt haben."',
-      },
-    },
-    {
-      start: 37,
-      end: 46,
-      translations: {
-        'English [CC]': 'Lewis Strauss: "Theory will take you only so far, Robert."',
-        Spanish: 'Lewis Strauss: "La teoría solo te llevará hasta cierto punto, Robert."',
-        French: 'Lewis Strauss: "La théorie ne vous mènera que jusqu\'à un certain point, Robert."',
-        German: 'Lewis Strauss: "Die Theorie bringt einen nur bis zu einem gewissen Punkt, Robert."',
-      },
-    },
-    {
-      start: 47,
-      end: 58,
-      translations: {
-        'English [CC]': '[Ludwig Göransson violin tempo accelerates rapidly]',
-        Spanish: '[El tempo de los violines de Ludwig Göransson se acelera vertiginosamente]',
-        French: '[Le tempo des violons s\'accélère vivement]',
-        German: '[Das Geigentempo beschleunigt sich rasant]',
-      },
-    },
-    {
-      start: 59,
-      end: 70,
-      translations: {
-        'English [CC]': 'Oppenheimer: "Is anyone ever going to tell the truth about what\'s happening here?"',
-        Spanish: 'Oppenheimer: "¿Alguien va a decir la verdad sobre lo que está pasando aquí?"',
-        French: 'Oppenheimer: "Quelqu\'un dira-t-il un jour la vérité sur ce qui se passe ici ?"',
-        German: 'Oppenheimer: "Wird jemals jemand die Wahrheit darüber sagen, was hier geschieht?"',
-      },
-    },
-    {
-      start: 71,
-      end: 85,
-      translations: {
-        'English [CC]': '[Final countdown protocol initiated across Trinity test site bunker]',
-        Spanish: '[Protocolo de cuenta regresiva final iniciado en el búnker de pruebas Trinity]',
-        French: '[Protocole de compte à rebours final enclenché dans le bunker]',
-        German: '[Finales Countdown-Protokoll am Testgelände Trinity gestartet]',
-      },
-    },
-  ],
-
-  // Dune: Part Two (trailerKey: 'Way9Dexny3w')
-  Way9Dexny3w: [
-    {
-      start: 1,
-      end: 7,
-      translations: {
-        'English [CC]': '[Wind howling across the shifting dunes of Arrakis]',
-        Spanish: '[El viento aúlla sobre las dunas ondulantes de Arrakis]',
-        French: '[Le vent hurle sur les dunes ondoyantes d\'Arrakis]',
-        German: '[Der Wüstenwind heult über die Dünen von Arrakis]',
-      },
-    },
-    {
-      start: 8,
-      end: 18,
-      translations: {
-        'English [CC]': 'Princess Irulan: "In the shadows of Arrakis lie many secrets..."',
-        Spanish: 'Princesa Irulan: "En las sombras de Arrakis yacen muchos secretos..."',
-        French: 'Princesse Irulan: "Dans les ombres d\'Arrakis se cachent de nombreux secrets..."',
-        German: 'Prinzessin Irulan: "In den Schatten von Arrakis liegen viele Geheimnisse..."',
-      },
-    },
-    {
-      start: 19,
-      end: 28,
-      translations: {
-        'English [CC]': 'Paul Atreides: "Your father didn\'t believe in revenge." / Chani: "I do."',
-        Spanish: 'Paul Atreides: "Tu padre no creía en la venganza." / Chani: "Yo sí."',
-        French: 'Paul Atreides: "Ton père ne croyait pas en la vengeance." / Chani: "Moi si."',
-        German: 'Paul Atreides: "Dein Vater glaubte nicht an Rache." / Chani: "Ich schon."',
-      },
-    },
-    {
-      start: 29,
-      end: 39,
-      translations: {
-        'English [CC]': '[Crysknife unsheathed with a metallic hum]',
-        Spanish: '[Cuchillo Crys desenvainado con un zumbido metálico]',
-        French: '[Lame de crys dégainée dans un bourdonnement]',
-        German: '[Krysmesser mit metallischem Summen gezogen]',
-      },
-    },
-    {
-      start: 40,
-      end: 50,
-      translations: {
-        'English [CC]': 'Paul: "He who can destroy a thing, controls a thing."',
-        Spanish: 'Paul: "Aquel que puede destruir una cosa, la controla."',
-        French: 'Paul: "Celui qui peut détruire une chose la contrôle."',
-        German: 'Paul: "Wer etwas zerstören kann, der beherrscht es auch."',
-      },
-    },
-    {
-      start: 51,
-      end: 62,
-      translations: {
-        'English [CC]': 'Paul: "May thy knife chip and shatter!"',
-        Spanish: 'Paul: "¡Que tu cuchillo se melle y se haga pedazos!"',
-        French: 'Paul: "Que ta lame s\'ébrèche et se brise !"',
-        German: 'Paul: "Möge deine Klinge splittern und zerbrechen!"',
-      },
-    },
-    {
-      start: 63,
-      end: 80,
-      translations: {
-        'English [CC]': '[Colossal Shai-Hulud sandworm breaches through the blinding sandstorm]',
-        Spanish: '[El colosal gusano de arena Shai-Hulud emerge a través de la tormenta]',
-        French: '[Le ver des sables géant Shai-Hulud jaillit de la tempête de sable]',
-        German: '[Der kolossale Sandwurm Shai-Hulud bricht durch den Sandsturm]',
-      },
-    },
-  ],
-
-  // Cyberpunk: Edgerunners (trailerKey: 'JtqIas3bYhg')
-  JtqIas3bYhg: [
-    {
-      start: 2,
-      end: 8,
-      translations: {
-        'English [CC]': '[Heavy synthwave bass and neon neon flickering]',
-        Spanish: '[Bajo synthwave contundente y luces de neón parpadeantes]',
-        French: '[Basse synthwave rythmée et néons vacillants]',
-        German: '[Wummernder Synthwave-Bass und flackernde Neonlichter]',
-      },
-    },
-    {
-      start: 9,
-      end: 18,
-      translations: {
-        'English [CC]': 'David Martinez: "I ain\'t gonna die here in the gutters of Santo Domingo."',
-        Spanish: 'David Martinez: "No voy a morir en las alcantarillas de Santo Domingo."',
-        French: 'David Martinez: "Je ne vais pas crever dans les caniveaux de Santo Domingo."',
-        German: 'David Martinez: "Ich werde nicht in den Gossen von Santo Domingo sterben."',
-      },
-    },
-    {
-      start: 19,
-      end: 28,
-      translations: {
-        'English [CC]': 'Lucy: "Night City always wins, David. It takes everything you have."',
-        Spanish: 'Lucy: "Night City siempre gana, David. Te quita todo lo que tienes."',
-        French: 'Lucy: "Night City gagne toujours, David. Elle te prend tout ce que tu as."',
-        German: 'Lucy: "Night City gewinnt immer, David. Es nimmt dir alles, was du hast."',
-      },
-    },
-    {
-      start: 29,
-      end: 39,
-      translations: {
-        'English [CC]': 'Maine: "You got military cyberware in your spine, kid. Keep your head on."',
-        Spanish: 'Maine: "Tienes ciberware militar en tu columna, chico. Mantén la calma."',
-        French: 'Maine: "Tu as du matériel militaire dans la colonne vertébrale, gamin."',
-        German: 'Maine: "Du hast Militär-Cyberware im Rückgrat, Junge. Behalt die Nerven."',
-      },
-    },
-    {
-      start: 40,
-      end: 52,
-      translations: {
-        'English [CC]': '[Sandevistan cyberware accelerates time in optical color blur]',
-        Spanish: '[El ciberimplante Sandevistan acelera el tiempo con distorsión óptica]',
-        French: '[L\'implant Sandevistan accélère le temps dans un flou optique]',
-        German: '[Sandevistan beschleunigt die Zeit mit optischen Verzerrungen]',
-      },
-    },
-    {
-      start: 53,
-      end: 65,
-      translations: {
-        'English [CC]': 'David: "I\'ll take you to the moon, Lucy. I promise."',
-        Spanish: 'David: "Te llevaré a la luna, Lucy. Te lo prometo."',
-        French: 'David: "Je t\'emmènerai sur la lune, Lucy. C\'est une promesse."',
-        German: 'David: "Ich bringe dich zum Mond, Lucy. Versprochen."',
-      },
-    },
-  ],
-};
-
-const GENERIC_SUBTITLE_CUES: CaptionCue[] = [
-  {
-    start: 2,
-    end: 8,
-    translations: {
-      'English [CC]': '[Dramatic orchestral score swells]',
-      Spanish: '[Música orquestal dramática aumenta]',
-      French: '[Musique orchestrale dramatique]',
-      German: '[Dramatische orchestrale Musik erklingt]',
-    },
-  },
-  {
-    start: 9,
-    end: 18,
-    translations: {
-      'English [CC]': 'Commander, incoming priority transmission on quantum channel 7.',
-      Spanish: 'Comandante, transmisión prioritaria entrante en el canal cuántico 7.',
-      French: 'Commandant, transmission prioritaire entrante sur le canal quantique 7.',
-      German: 'Kommandant, eingehende Prioritätsübertragung auf Quantenkanal 7.',
-    },
-  },
-  {
-    start: 19,
-    end: 27,
-    translations: {
-      'English [CC]': 'Put it through on main audio. Cross-check all beacon signatures.',
-      Spanish: 'Pásalo al audio principal. Verifica todas las firmas de baliza.',
-      French: 'Mettez-le sur le canal audio principal. Vérifiez les signatures.',
-      German: 'Auf Hauptaudio schalten. Signalmuster der Baken abgleichen.',
-    },
-  },
-  {
-    start: 28,
-    end: 36,
-    translations: {
-      'English [CC]': '"If anyone is receiving this... coordinates locked... do not enter Sector 12."',
-      Spanish: '"Si alguien recibe esto... coordenadas fijadas... no entren al Sector 12."',
-      French: '"Si quelqu\'un reçoit ce message... coordonnées verrouillées... n\'entrez pas dans le secteur 12."',
-      German: '"Falls jemand dies empfängt... Koordinaten erfasst... betreten Sie nicht Sektor 12."',
-    },
-  },
-  {
-    start: 37,
-    end: 45,
-    translations: {
-      'English [CC]': '[Static crackling over comms]',
-      Spanish: '[Estática crujiendo en las comunicaciones]',
-      French: '[Grésillements sur les communications]',
-      German: '[Statisches Rauschen im Funkverkehr]',
-    },
-  },
-  {
-    start: 46,
-    end: 55,
-    translations: {
-      'English [CC]': 'The signal decayed. But atmospheric telemetry is off the charts.',
-      Spanish: 'La señal decayó. Pero la telemetría atmosférica está fuera de control.',
-      French: 'Le signal s\'est éteint. Mais la télémétrie atmosphérique est anormale.',
-      German: 'Signal abgebrochen. Doch die Telemetriedaten sind beispiellos hoch.',
-    },
-  },
-  {
-    start: 56,
-    end: 65,
-    translations: {
-      'English [CC]': 'Prepare sub-light thrusters. We need to see what is on the other side.',
-      Spanish: 'Preparen los propulsores sub-luz. Necesitamos ver qué hay del otro lado.',
-      French: 'Préparez les propulseurs sous-luminiques. Voyons ce qui se trouve de l\'autre côté.',
-      German: 'Sublicht-Triebwerke vorbereiten. Wir müssen sehen, was auf der anderen Seite ist.',
-    },
-  },
-  {
-    start: 66,
-    end: 78,
-    translations: {
-      'English [CC]': '[Deep resonant hum of hyperdrive engines powering up]',
-      Spanish: '[Zumbido profundo de los motores hiperespaciales activándose]',
-      French: '[Vrombissement profond des moteurs hyperspatiaux]',
-      German: '[Tiefes Dröhnen der Hyperraum-Triebwerke beim Hochfahren]',
-    },
-  },
-  {
-    start: 79,
-    end: 85,
-    translations: {
-      'English [CC]': 'Approaching perimeter boundary in five seconds. Brace for deceleration.',
-      Spanish: 'Aproximándonos al límite del perímetro en cinco segundos. Prepárense para desacelerar.',
-      French: 'Approche du périmètre de sécurité dans cinq secondes. Préparez-vous à ralentir.',
-      German: 'Annäherung an die Außengrenze in fünf Sekunden. Auf Abbremsung vorbereiten.',
-    },
-  },
-  {
-    start: 86,
-    end: 96,
-    translations: {
-      'English [CC]': 'There it is. Right where the deep space telescope warned us it would be.',
-      Spanish: 'Ahí está. Justo donde el telescopio de espacio profundo nos advirtió.',
-      French: 'Le voilà. Exactement là où le télescope spatial nous avait prévenus.',
-      German: 'Da ist es. Genau dort, wo das Tiefraumteleskop es vorausgesagt hat.',
-    },
-  },
-  {
-    start: 97,
-    end: 108,
-    translations: {
-      'English [CC]': 'Gravitational lensing is warping the horizon. Maintain safe separation distance.',
-      Spanish: 'La lente gravitatoria distorsiona el horizonte. Mantengan distancia de seguridad.',
-      French: 'La lentille gravitationnelle déforme l\'horizon. Maintenez la distance de sécurité.',
-      German: 'Der Gravitationslinseneffekt krümmt den Horizont. Sicherheitsabstand wahren.',
-    },
-  },
-  {
-    start: 109,
-    end: 119,
-    translations: {
-      'English [CC]': '[Sensors beeping rhythmically in unison]',
-      Spanish: '[Sensores emitiendo pitidos rítmicos al unísono]',
-      French: '[Capteurs émettant des bips rythmés à l\'unisson]',
-      German: '[Sensoren piepen rhythmisch im Einklang]',
-    },
-  },
-  {
-    start: 120,
-    end: 132,
-    translations: {
-      'English [CC]': 'Whatever happened here... it wasn\'t a malfunction. It was deliberate.',
-      Spanish: 'Lo que haya pasado aquí... no fue un fallo. Fue deliberado.',
-      French: 'Ce qui s\'est passé ici... n\'était pas une panne. C\'était délibéré.',
-      German: 'Was auch immer hier geschah... es war kein technischer Defekt. Es war Absicht.',
-    },
-  },
-  {
-    start: 133,
-    end: 145,
-    translations: {
-      'English [CC]': 'All teams, engage tactical standby. We are going in.',
-      Spanish: 'Todos los equipos, entren en alerta táctica. Vamos a entrar.',
-      French: 'Toutes les équipes, tenez-vous prêtes. Nous entrons.',
-      German: 'Alle Teams auf Gefechtsbereitschaft. Wir dringen jetzt ein.',
-    },
-  },
-];
-
-function generateVttBlobUrl(cues: CaptionCue[], lang: string): string {
-  let vtt = 'WEBVTT\n\n';
-  cues.forEach((cue, index) => {
-    const startM = Math.floor(cue.start / 60);
-    const startS = Math.floor(cue.start % 60);
-    const endM = Math.floor(cue.end / 60);
-    const endS = Math.floor(cue.end % 60);
-    const startStr = `${String(startM).padStart(2, '0')}:${String(startS).padStart(2, '0')}.000`;
-    const endStr = `${String(endM).padStart(2, '0')}:${String(endS).padStart(2, '0')}.000`;
-    const text = cue.translations[lang] || cue.translations['English [CC]'] || '';
-    if (text) {
-      vtt += `${index + 1}\n${startStr} --> ${endStr}\n${text}\n\n`;
-    }
-  });
-  return URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }));
+function formatTime(secs: number): string {
+  const hours = Math.floor(secs / 3600);
+  const minutes = Math.floor((secs % 3600) / 60);
+  const seconds = Math.floor(secs % 60);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (hours > 0) {
+    return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+  }
+  return `${pad(minutes)}:${pad(seconds)}`;
 }
 
 export const WatchPage: React.FC = () => {
@@ -561,30 +27,7 @@ export const WatchPage: React.FC = () => {
 
   const [media, setMedia] = useState<MediaItem | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Episode tracking from search params
-  const paramSeason = parseInt(searchParams.get('season') || '1', 10);
-  const paramEpisode = parseInt(searchParams.get('episode') || '1', 10);
-  const [currentSeasonNumber, setCurrentSeasonNumber] = useState<number>(paramSeason || 1);
-  const [currentEpisodeNumber, setCurrentEpisodeNumber] = useState<number>(paramEpisode || 1);
-
-  // Player playback states
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [totalDuration, setTotalDuration] = useState(7200); // default 2 hours
-  const [volume, setVolume] = useState(0.85);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [activeSubtitle, setActiveSubtitle] = useState('English [CC]');
-  const [captionOffset, setCaptionOffset] = useState<number>(0); // Sync offset fine-tuning (-2.0s to +2.0s)
-  const [currentSubtitleText, setCurrentSubtitleText] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  // Drawer & Menus visibility
-  const [showControls, setShowControls] = useState(true);
-  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
-  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
-  const [showEpisodesDrawer, setShowEpisodesDrawer] = useState(false);
+  const [initialTime, setInitialTime] = useState(0);
 
   // Resume toast banner state
   const [resumeNotification, setResumeNotification] = useState<{
@@ -593,72 +36,59 @@ export const WatchPage: React.FC = () => {
     formatted: string;
   } | null>(null);
 
-  // Action toast (e.g., "Skipped Intro (+85s)")
-  const [actionToast, setActionToast] = useState<string | null>(null);
+  // Episode tracking from search params
+  const paramSeason = parseInt(searchParams.get('season') || '1', 10);
+  const paramEpisode = parseInt(searchParams.get('episode') || '1', 10);
+  const [currentSeasonNumber, setCurrentSeasonNumber] = useState<number>(paramSeason || 1);
+  const [currentEpisodeNumber, setCurrentEpisodeNumber] = useState<number>(paramEpisode || 1);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedTimeRef = useRef<number>(0);
+  const playerKeyRef = useRef<number>(0);
 
-  // Refs for unmount progress saving
-  const currentTimeRef = useRef(currentTime);
-  currentTimeRef.current = currentTime;
-  const totalDurationRef = useRef(totalDuration);
-  totalDurationRef.current = totalDuration;
-  const mediaRef = useRef(media);
-  mediaRef.current = media;
-  const updateProgressRef = useRef(updateProgress);
-  updateProgressRef.current = updateProgress;
+  // Fetch media details & restore progress
+  useEffect(() => {
+    let isMounted = true;
+    if (id) {
+      setLoading(true);
+      fetchMediaDetails(id, 'movie').then((res) => {
+        if (!isMounted) return;
+        setMedia(res);
+        setLoading(false);
 
-  // Dispatch player command to YouTube IFrame API via postMessage
-  const sendPlayerCommand = useCallback((func: string, args: any[] = []) => {
-    if (iframeRef.current?.contentWindow) {
-      try {
-        iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func, args }),
-          '*'
-        );
-      } catch (e) {
-        // Ignore cross-origin postMessage errors
-      }
+        // Check for existing saved watch progress (> 4% and < 96%)
+        const savedProgress = getMediaProgress(res.id);
+        if (savedProgress && savedProgress.duration > 0) {
+          const ratio = savedProgress.currentTime / savedProgress.duration;
+          if (ratio > 0.04 && ratio < 0.96) {
+            setInitialTime(savedProgress.currentTime);
+
+            // Show resume notification toast
+            setResumeNotification({
+              show: true,
+              time: savedProgress.currentTime,
+              formatted: formatTime(savedProgress.currentTime),
+            });
+
+            // Auto-hide toast after 7 seconds
+            setTimeout(() => {
+              if (isMounted) {
+                setResumeNotification((prev) => (prev ? { ...prev, show: false } : null));
+              }
+            }, 7000);
+          } else {
+            setInitialTime(0);
+          }
+        } else {
+          setInitialTime(0);
+        }
+      });
     }
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   const isSeries = media?.media_type === 'tv' || Boolean(media?.seasons) || Boolean(media?.seasons_data?.length);
-
-  const formatTime = (secs: number) => {
-    const hours = Math.floor(secs / 3600);
-    const minutes = Math.floor((secs % 3600) / 60);
-    const seconds = Math.floor(secs % 60);
-
-    const pad = (n: number) => String(n).padStart(2, '0');
-    if (hours > 0) {
-      return `${hours}:${pad(minutes)}:${pad(seconds)}`;
-    }
-    return `${pad(minutes)}:${pad(seconds)}`;
-  };
-
-  // Seasons and episode list for TV shows
   const title = media ? getDisplayTitle(media) : 'CineStream Cinema Player';
-  const trailerKey = media?.trailer_key || 'zSWdZVtXT7E';
-  const defaultVideoUrl = 'https://cdn.jsdelivr.net/gh/mediaelement/mediaelement-files@master/big_buck_bunny.mp4';
-  const videoSource = media?.video_url || defaultVideoUrl;
-
-  const cues = useMemo(() => {
-    return TRAILER_SUBTITLES[trailerKey] || GENERIC_SUBTITLE_CUES;
-  }, [trailerKey]);
-
-  // Pre-generate WebVTT blob track URLs for native HTML5 <track> elements
-  const trackUrls = useMemo(() => {
-    return {
-      'English [CC]': generateVttBlobUrl(cues, 'English [CC]'),
-      Spanish: generateVttBlobUrl(cues, 'Spanish'),
-      French: generateVttBlobUrl(cues, 'French'),
-      German: generateVttBlobUrl(cues, 'German'),
-    };
-  }, [cues]);
 
   const seasonsData: Season[] = useMemo(() => {
     if (!media || !isSeries) return [];
@@ -677,958 +107,115 @@ export const WatchPage: React.FC = () => {
     return activeSeason.episodes.find((ep) => ep.episode_number === currentEpisodeNumber) || activeSeason.episodes[0];
   }, [activeSeason, currentEpisodeNumber]);
 
-  // Forced synchronization directly powered by the HTML5 video element's 'timeupdate' event
-  const handleTimeUpdate = useCallback(
-    (e: React.SyntheticEvent<HTMLVideoElement>) => {
-      const time = e.currentTarget.currentTime;
-      setCurrentTime(time);
-
-      // Periodically update watch history progress
-      if (mediaRef.current && Math.abs(time - lastSavedTimeRef.current) > 2) {
-        lastSavedTimeRef.current = time;
-        updateProgressRef.current(mediaRef.current.id, time, totalDurationRef.current, mediaRef.current);
-      }
-
-      if (activeSubtitle === 'Off') {
-        setCurrentSubtitleText(null);
-        return;
-      }
-
-      // Synchronize cues with video playback time
-      const effectiveTime = Math.max(0, time + captionOffset);
-      const maxEnd = cues[cues.length - 1]?.end || 120;
-      const lookupTime = effectiveTime <= maxEnd ? effectiveTime : effectiveTime % maxEnd;
-
-      const matchedCue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
-      const text = matchedCue
-        ? matchedCue.translations[activeSubtitle] || matchedCue.translations['English [CC]'] || null
-        : null;
-      setCurrentSubtitleText(text);
-    },
-    [activeSubtitle, captionOffset, cues]
-  );
-
-  // Synchronize subtitle track state when changing language, offset, or media while paused
-  useEffect(() => {
-    if (activeSubtitle === 'Off') {
-      setCurrentSubtitleText(null);
-      return;
-    }
-    const targetTime = videoRef.current ? videoRef.current.currentTime : currentTime;
-    const effectiveTime = Math.max(0, targetTime + captionOffset);
-    const maxEnd = cues[cues.length - 1]?.end || 120;
-    const lookupTime = effectiveTime <= maxEnd ? effectiveTime : effectiveTime % maxEnd;
-
-    const matchedCue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
-    const text = matchedCue
-      ? matchedCue.translations[activeSubtitle] || matchedCue.translations['English [CC]'] || null
-      : null;
-    setCurrentSubtitleText(text);
-  }, [activeSubtitle, captionOffset, cues, currentTime]);
-
-  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    const dur = e.currentTarget.duration;
-    if (dur && !isNaN(dur) && dur > 0) {
-      setTotalDuration(Math.round(dur));
-    }
-    if (currentTimeRef.current > 0) {
-      e.currentTarget.currentTime = currentTimeRef.current;
-    }
-    e.currentTarget.playbackRate = playbackSpeed;
-    e.currentTarget.volume = volume;
-    e.currentTarget.muted = isMuted;
-    if (isPlaying) {
-      e.currentTarget.play().catch(() => {});
-    }
-  };
-
-  // Listen for real-time audio playback timestamps from YouTube player via postMessage
-  useEffect(() => {
-    const handleWindowMessage = (event: MessageEvent) => {
-      try {
-        let data = event.data;
-        if (typeof data === 'string') {
-          try {
-            data = JSON.parse(data);
-          } catch {
-            return;
-          }
-        }
-        if (data && data.event === 'infoDelivery' && data.info) {
-          if (typeof data.info.currentTime === 'number') {
-            setCurrentTime(data.info.currentTime);
-          }
-          if (typeof data.info.duration === 'number' && data.info.duration > 0) {
-            setTotalDuration((prev) => Math.max(prev, Math.round(data.info.duration)));
-          }
-          if (typeof data.info.playerState === 'number') {
-            if (data.info.playerState === 1) setIsPlaying(true);
-            else if (data.info.playerState === 2) setIsPlaying(false);
-          }
-        }
-      } catch (e) {}
-    };
-
-    window.addEventListener('message', handleWindowMessage);
-    return () => window.removeEventListener('message', handleWindowMessage);
-  }, []);
-
-  // Poll YouTube status regularly while playing to maintain frame-accurate audio-subtitle alignment
-  useEffect(() => {
-    if (!isPlaying) return;
-    const interval = setInterval(() => {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'listening' }),
-        '*'
-      );
-    }, 600);
-    return () => clearInterval(interval);
-  }, [isPlaying]);
-
-  const handleIframeLoad = () => {
-    iframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'listening' }),
-      '*'
-    );
-    if (isMuted) {
-      sendPlayerCommand('mute');
-    } else {
-      sendPlayerCommand('unMute');
-      sendPlayerCommand('setVolume', [volume * 100]);
-    }
-    if (!isPlaying) {
-      sendPlayerCommand('pauseVideo');
-    }
-    if (currentTimeRef.current > 0) {
-      sendPlayerCommand('seekTo', [currentTimeRef.current, true]);
-    }
-    sendPlayerCommand('setPlaybackRate', [playbackSpeed]);
-  };
-
-  // Fetch media details & restore progress
-  useEffect(() => {
-    let isMounted = true;
-    if (id) {
-      setLoading(true);
-      fetchMediaDetails(id, 'movie').then((res) => {
-        if (!isMounted) return;
-        setMedia(res);
-        setLoading(false);
-
-        // Check for existing saved watch progress (> 5% and < 95%)
-        const savedProgress = getMediaProgress(res.id);
-        if (savedProgress && savedProgress.duration > 0) {
-          const ratio = savedProgress.currentTime / savedProgress.duration;
-          if (ratio > 0.04 && ratio < 0.96) {
-            setCurrentTime(savedProgress.currentTime);
-            setTotalDuration(savedProgress.duration);
-
-            // Show resume notification toast
-            setResumeNotification({
-              show: true,
-              time: savedProgress.currentTime,
-              formatted: formatTime(savedProgress.currentTime),
-            });
-
-            // Auto-hide toast after 7 seconds
-            setTimeout(() => {
-              if (isMounted) {
-                setResumeNotification((prev) => (prev ? { ...prev, show: false } : null));
-              }
-            }, 7000);
-          } else {
-            setCurrentTime(120); // standard demo start
-          }
-        } else {
-          setCurrentTime(120);
-        }
-      });
-    }
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
-
-  // Periodic auto-save progress every 5 seconds while playing (uses stable refs)
-  useEffect(() => {
-    if (!media?.id || !isPlaying) return;
-
-    const saveInterval = setInterval(() => {
-      if (mediaRef.current) {
-        updateProgressRef.current(
-          mediaRef.current.id,
-          currentTimeRef.current,
-          totalDurationRef.current,
-          mediaRef.current
-        );
-      }
-    }, 5000);
-
-    return () => clearInterval(saveInterval);
-  }, [media?.id, isPlaying]);
-
-  // Save progress on component unmount safely outside the React render phase
-  useEffect(() => {
-    return () => {
-      if (mediaRef.current && currentTimeRef.current > 0) {
-        const curMedia = mediaRef.current;
-        const curTime = currentTimeRef.current;
-        const curDuration = totalDurationRef.current;
-        setTimeout(() => {
-          updateProgressRef.current(curMedia.id, curTime, curDuration, curMedia);
-        }, 0);
-      }
-    };
-  }, []);
-
-  // Handle auto-hide controls after inactivity
-  const handleMouseMove = useCallback(() => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    if (isPlaying && !showEpisodesDrawer) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-        setShowSpeedMenu(false);
-        setShowSubtitleMenu(false);
-      }, 3500);
-    }
-  }, [isPlaying, showEpisodesDrawer]);
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    };
-  }, [handleMouseMove]);
-
-  // Toggle playback and send sync command to video player
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch(() => {});
-        setIsPlaying(true);
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    } else {
-      setIsPlaying((prev) => !prev);
-    }
-    sendPlayerCommand(isPlaying ? 'pauseVideo' : 'playVideo');
-    setShowControls(true);
-  };
-
-  const toggleMute = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    if (videoRef.current) {
-      videoRef.current.muted = nextMuted;
-    }
-    sendPlayerCommand(nextMuted ? 'mute' : 'unMute');
-  };
-
-  const handleVolumeChange = (newVol: number) => {
-    setVolume(newVol);
-    const shouldMute = newVol === 0;
-    setIsMuted(shouldMute);
-    if (videoRef.current) {
-      videoRef.current.volume = newVol;
-      videoRef.current.muted = shouldMute;
-    }
-    sendPlayerCommand('setVolume', [newVol * 100]);
-    if (shouldMute) {
-      sendPlayerCommand('mute');
-    } else {
-      sendPlayerCommand('unMute');
-    }
-  };
-
-  // Keyboard shortcut listener (Space = play/pause, F = fullscreen, Esc, Arrow keys)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.key.toLowerCase() === 'f') {
-        toggleFullscreen();
-      } else if (e.key === 'ArrowRight') {
-        seekRelative(10);
-      } else if (e.key === 'ArrowLeft') {
-        seekRelative(-10);
-      } else if (e.key.toLowerCase() === 'm') {
-        toggleMute();
-      } else if (e.key === 'Escape' && showEpisodesDrawer) {
-        setShowEpisodesDrawer(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showEpisodesDrawer, isMuted, volume]);
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen?.();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen?.();
-      setIsFullscreen(false);
-    }
-  };
-
-  const seekRelative = (deltaSeconds: number) => {
-    const nextTime = Math.max(0, Math.min(totalDuration, currentTimeRef.current + deltaSeconds));
-    setCurrentTime(nextTime);
-    if (videoRef.current) {
-      videoRef.current.currentTime = nextTime;
-    }
-    sendPlayerCommand('seekTo', [nextTime, true]);
-    if (mediaRef.current) {
-      updateProgress(mediaRef.current.id, nextTime, totalDurationRef.current, mediaRef.current);
-    }
-    setShowControls(true);
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = Number(e.target.value);
-    setCurrentTime(newTime);
-    if (videoRef.current) {
-      videoRef.current.currentTime = newTime;
-    }
-    sendPlayerCommand('seekTo', [newTime, true]);
-    if (mediaRef.current) {
-      updateProgress(mediaRef.current.id, newTime, totalDurationRef.current, mediaRef.current);
-    }
-  };
-
-  // Skip Intro feature (+85 sec)
-  const handleSkipIntro = () => {
-    seekRelative(85);
-    setActionToast('Skipped Opening Intro (+85s)');
-    setTimeout(() => setActionToast(null), 2500);
-  };
-
-  // Switch to specific episode from drawer
-  const handleSelectEpisode = (seasonNum: number, episodeNum: number, episodeName: string) => {
+  const handleSelectEpisode = (seasonNum: number, episodeNum: number) => {
     setCurrentSeasonNumber(seasonNum);
     setCurrentEpisodeNumber(episodeNum);
-    setCurrentTime(0);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
-    }
-    sendPlayerCommand('seekTo', [0, true]);
+    setInitialTime(0);
+    playerKeyRef.current += 1;
     setSearchParams({ season: String(seasonNum), episode: String(episodeNum) }, { replace: true });
-    setShowEpisodesDrawer(false);
-    setIsPlaying(true);
-    sendPlayerCommand('playVideo');
-    setActionToast(`Playing S${seasonNum}:E${episodeNum} · ${episodeName}`);
-    setTimeout(() => setActionToast(null), 3000);
   };
 
-  // Next Episode feature
   const handleNextEpisode = () => {
-    if (isSeries && activeSeason) {
-      const nextEpIndex = activeSeason.episodes.findIndex((ep) => ep.episode_number === currentEpisodeNumber) + 1;
-      if (nextEpIndex < activeSeason.episodes.length) {
-        const nextEp = activeSeason.episodes[nextEpIndex];
-        handleSelectEpisode(currentSeasonNumber, nextEp.episode_number, nextEp.name);
-        return;
-      } else {
-        // Next Season
-        const nextSeason = seasonsData.find((s) => s.season_number === currentSeasonNumber + 1);
-        if (nextSeason && nextSeason.episodes.length > 0) {
-          const firstEp = nextSeason.episodes[0];
-          handleSelectEpisode(nextSeason.season_number, firstEp.episode_number, firstEp.name);
-          return;
-        }
+    if (!activeSeason) return;
+    const currentIdx = activeSeason.episodes.findIndex((e) => e.episode_number === currentEpisodeNumber);
+    if (currentIdx !== -1 && currentIdx < activeSeason.episodes.length - 1) {
+      const nextEp = activeSeason.episodes[currentIdx + 1];
+      handleSelectEpisode(currentSeasonNumber, nextEp.episode_number);
+    } else {
+      // Check next season
+      const nextSeason = seasonsData.find((s) => s.season_number === currentSeasonNumber + 1);
+      if (nextSeason && nextSeason.episodes.length > 0) {
+        handleSelectEpisode(nextSeason.season_number, nextSeason.episodes[0].episode_number);
       }
     }
+  };
 
-    // Fallback: next movie/show in mock catalog
-    const currentId = Number(id);
-    const currentIndex = MOCK_MEDIA_ITEMS.findIndex((m) => m.id === currentId);
-    const nextItem =
-      currentIndex !== -1 && currentIndex < MOCK_MEDIA_ITEMS.length - 1
-        ? MOCK_MEDIA_ITEMS[currentIndex + 1]
-        : MOCK_MEDIA_ITEMS[0];
-
-    setActionToast(`Playing Next: ${nextItem.title || nextItem.name}`);
-    setTimeout(() => {
-      navigate(`/watch/${nextItem.id}`);
-    }, 800);
+  const handlePreviousEpisode = () => {
+    if (!activeSeason) return;
+    const currentIdx = activeSeason.episodes.findIndex((e) => e.episode_number === currentEpisodeNumber);
+    if (currentIdx > 0) {
+      const prevEp = activeSeason.episodes[currentIdx - 1];
+      handleSelectEpisode(currentSeasonNumber, prevEp.episode_number);
+    }
   };
 
   // Start Over handler from resume toast
   const handleStartOver = () => {
-    setCurrentTime(0);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
-    }
-    sendPlayerCommand('seekTo', [0, true]);
-    sendPlayerCommand('playVideo');
-    setIsPlaying(true);
-    if (media) {
-      updateProgress(media.id, 0, totalDuration, media);
-    }
-    setResumeNotification(null);
-    setActionToast('Restarted from beginning (00:00)');
-    setTimeout(() => setActionToast(null), 2500);
+    setInitialTime(0);
+    playerKeyRef.current += 1;
+    setResumeNotification((prev) => (prev ? { ...prev, show: false } : null));
   };
 
-  const handleSelectSpeed = (s: number) => {
-    setPlaybackSpeed(s);
-    if (videoRef.current) {
-      videoRef.current.playbackRate = s;
-    }
-    sendPlayerCommand('setPlaybackRate', [s]);
-    setShowSpeedMenu(false);
-  };
-
-  const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
-  const subtitles = ['Off', 'English [CC]', 'Spanish', 'French', 'German'];
+  if (loading) {
+    return (
+      <div className="w-screen h-screen bg-black flex flex-col items-center justify-center gap-4 text-white">
+        <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center gap-2">
+          <Film className="w-5 h-5 text-red-500 animate-pulse" />
+          <p className="text-zinc-400 text-sm font-medium tracking-wide">Loading CineStream Cinema Engine...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className="relative w-screen h-screen bg-black overflow-hidden select-none cursor-default"
-    >
-      {/* Background HTML5 Video Player with forced timeupdate subtitle synchronization */}
-      <div className="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden">
-        <video
-          ref={videoRef}
-          id="cinestream-main-video"
-          src={videoSource}
-          poster={media?.backdrop_path || undefined}
-          autoPlay
-          playsInline
-          muted={isMuted}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleLoadedMetadata}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={handleNextEpisode}
-          crossOrigin="anonymous"
-          className="w-full h-full object-cover"
-        >
-          {trackUrls['English [CC]'] && (
-            <track
-              kind="subtitles"
-              src={trackUrls['English [CC]']}
-              srcLang="en"
-              label="English [CC]"
-              default={activeSubtitle === 'English [CC]'}
-            />
-          )}
-          {trackUrls['Spanish'] && (
-            <track
-              kind="subtitles"
-              src={trackUrls['Spanish']}
-              srcLang="es"
-              label="Spanish"
-              default={activeSubtitle === 'Spanish'}
-            />
-          )}
-          {trackUrls['French'] && (
-            <track
-              kind="subtitles"
-              src={trackUrls['French']}
-              srcLang="fr"
-              label="French"
-              default={activeSubtitle === 'French'}
-            />
-          )}
-          {trackUrls['German'] && (
-            <track
-              kind="subtitles"
-              src={trackUrls['German']}
-              srcLang="de"
-              label="German"
-              default={activeSubtitle === 'German'}
-            />
-          )}
-        </video>
-      </div>
+    <div className="relative w-screen h-screen bg-black overflow-hidden">
+      {/* Custom Core Video Player with Multi-Language Audio Dubbing & Subtitles */}
+      <CustomVideoPlayer
+        key={`${media?.id}-${currentSeasonNumber}-${currentEpisodeNumber}-${playerKeyRef.current}`}
+        media={media}
+        title={title}
+        isSeries={isSeries}
+        seasonsData={seasonsData}
+        currentSeasonNumber={currentSeasonNumber}
+        currentEpisodeNumber={currentEpisodeNumber}
+        currentEpisode={activeEpisode}
+        initialTime={initialTime}
+        autoPlay={true}
+        onBack={() => navigate(-1)}
+        onTimeUpdate={(time, dur) => {
+          if (media) {
+            updateProgress(media.id, time, dur, media);
+          }
+        }}
+        onSelectEpisode={handleSelectEpisode}
+        onNextEpisode={handleNextEpisode}
+        onPreviousEpisode={handlePreviousEpisode}
+      />
 
-      {/* Dark Vignette Overlay */}
-      <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-
-      {/* Top Bar Controls */}
-      <div
-        className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-black/90 via-black/50 to-transparent transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            aria-label="Return to previous screen"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-white border border-zinc-700/80 transition-colors focus:outline-none cursor-pointer"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="font-display font-bold text-base sm:text-xl text-white tracking-tight">
-              {title}
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
-              {isSeries && activeEpisode ? (
-                <>
-                  <span className="text-red-400 font-semibold font-mono">
-                    S{currentSeasonNumber}:E{currentEpisodeNumber}
-                  </span>
-                  <span>·</span>
-                  <span className="text-white font-medium truncate max-w-xs">{activeEpisode.name}</span>
-                </>
-              ) : (
-                <span>{media?.duration || 'Feature Film'}</span>
-              )}
-              <span>·</span>
-              <span>{media?.maturity_rating || 'PG-13'}</span>
-              <span>·</span>
-              <span className="text-red-500 font-semibold">4K Ultra HD</span>
+      {/* Resume Notification Toast */}
+      {resumeNotification?.show && (
+        <div className="absolute top-20 right-8 z-40 bg-zinc-900/95 border border-zinc-700 text-white px-5 py-4 rounded-xl shadow-2xl backdrop-blur-md max-w-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 text-red-500">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span className="font-semibold text-sm">Resumed Playback</span>
             </div>
-          </div>
-        </div>
-
-        {/* Top Right Quick Actions: Episodes Drawer Button & Sync */}
-        <div className="flex items-center gap-3">
-          {isSeries && seasonsData.length > 0 && (
             <button
-              onClick={() => setShowEpisodesDrawer(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700/80 text-xs font-semibold text-white transition-colors cursor-pointer shadow-lg"
+              onClick={() => setResumeNotification((prev) => (prev ? { ...prev, show: false } : null))}
+              className="text-zinc-500 hover:text-white text-xs cursor-pointer"
             >
-              <ListVideo className="h-4 w-4 text-red-500" />
-              <span>Episodes</span>
+              ✕
             </button>
-          )}
-
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-zinc-800 text-xs text-zinc-300">
-            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-            <span>Syncing Progress</span>
           </div>
-        </div>
-      </div>
-
-      {/* Center Big Play/Pause Splash on Click */}
-      <div
-        onClick={() => setIsPlaying(!isPlaying)}
-        className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer"
-      >
-        {!isPlaying && (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-black/70 border border-zinc-700 text-white shadow-2xl animate-scaleUp">
-            <Play className="h-10 w-10 fill-white ml-1.5" />
-          </div>
-        )}
-      </div>
-
-      {/* Action Toast Feedback Overlay */}
-      {actionToast && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-lg bg-zinc-900/90 border border-zinc-700/80 text-white text-xs font-medium shadow-2xl backdrop-blur-md animate-fadeIn flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-          <span>{actionToast}</span>
-        </div>
-      )}
-
-      {/* Resume from Saved Progress Banner */}
-      {resumeNotification && resumeNotification.show && (
-        <div className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-md p-3.5 rounded-xl bg-zinc-900/95 border border-zinc-700 shadow-2xl backdrop-blur-lg flex items-center justify-between gap-3 text-xs text-zinc-200 animate-fadeIn">
-          <div className="flex items-center gap-2.5">
-            <div className="h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/20" />
-            <div>
-              <p className="font-semibold text-white">Resumed Playback</p>
-              <p className="text-zinc-400 text-[11px]">Continuing from {resumeNotification.formatted}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+          <p className="text-zinc-300 text-xs mt-1.5 leading-relaxed">
+            Continuing from <span className="font-bold text-white font-mono">{resumeNotification.formatted}</span>
+          </p>
+          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-zinc-800">
             <button
               onClick={handleStartOver}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-medium border border-zinc-700/80 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
             >
-              <ReplayIcon className="h-3 w-3" />
+              <ReplayIcon className="w-3.5 h-3.5" />
               <span>Start Over</span>
             </button>
             <button
-              onClick={() => setResumeNotification(null)}
-              className="px-2 py-1 text-zinc-500 hover:text-zinc-300 text-xs cursor-pointer"
+              onClick={() => setResumeNotification((prev) => (prev ? { ...prev, show: false } : null))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition-colors cursor-pointer"
             >
-              Dismiss
+              <Play className="w-3.5 h-3.5 fill-white" />
+              <span>Continue</span>
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* "Skip Intro" Floating Overlay Button (Netflix Style) */}
-      <div
-        className={`absolute bottom-28 right-6 sm:right-8 z-30 transition-all duration-300 ${
-          showControls || currentTime < 240 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
-        }`}
-      >
-        <button
-          onClick={handleSkipIntro}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-black/80 hover:bg-black text-white text-xs font-bold border border-zinc-600/90 shadow-2xl backdrop-blur-md hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer"
-        >
-          <FastForward className="h-3.5 w-3.5 fill-current" />
-          <span>Skip Intro (+85s)</span>
-        </button>
-      </div>
-
-      {/* Subtitle / Caption Overlay */}
-      {activeSubtitle !== 'Off' && currentSubtitleText && (
-        <div
-          className={`absolute left-0 right-0 z-20 pointer-events-none select-none flex justify-center px-4 transition-all duration-300 ${
-            showControls ? 'bottom-24 sm:bottom-28' : 'bottom-16 sm:bottom-20'
-          }`}
-        >
-          <div className="max-w-[80%] text-center mx-auto">
-            <span className="inline-block bg-black/75 text-white text-base sm:text-lg md:text-2xl font-semibold px-4 py-1.5 rounded-md backdrop-blur-sm shadow-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-wide leading-relaxed">
-              {currentSubtitleText}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Player Controller Bar */}
-      <div
-        className={`absolute bottom-0 left-0 right-0 z-30 p-4 sm:p-6 bg-gradient-to-t from-black/95 via-black/75 to-transparent transition-opacity duration-300 ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        {/* Interactive Scrub Seekbar */}
-        <div className="relative mb-3 group/scrub">
-          <input
-            type="range"
-            min={0}
-            max={totalDuration}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-red-600 focus:outline-none focus:ring-0"
-          />
-          <div
-            className="absolute top-0 left-0 h-1.5 bg-red-600 rounded-lg pointer-events-none shadow-[0_0_8px_rgba(220,38,38,0.7)]"
-            style={{ width: `${(currentTime / totalDuration) * 100}%` }}
-          />
-        </div>
-
-        {/* Action Controls Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Left: Play/Pause, Replay 10s, Forward 10s, Volume, Timestamps */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button
-              onClick={togglePlay}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-zinc-950 hover:bg-zinc-200 transition-colors shadow-lg cursor-pointer"
-            >
-              {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
-            </button>
-
-            <button
-              onClick={() => seekRelative(-10)}
-              aria-label="Skip backward 10 seconds"
-              title="Skip -10s"
-              className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
-            >
-              <RotateCcw className="h-5 w-5" />
-            </button>
-
-            <button
-              onClick={() => seekRelative(10)}
-              aria-label="Skip forward 10 seconds"
-              title="Skip +10s"
-              className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
-            >
-              <RotateCw className="h-5 w-5" />
-            </button>
-
-            {/* Volume Control */}
-            <div className="flex items-center gap-2 group/volume">
-              <button
-                onClick={toggleMute}
-                aria-label={isMuted ? 'Unmute' : 'Mute'}
-                className="text-zinc-300 hover:text-white transition-colors cursor-pointer"
-              >
-                {isMuted || volume === 0 ? <VolumeX className="h-5 w-5 text-red-500" /> : <Volume2 className="h-5 w-5" />}
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={isMuted ? 0 : volume}
-                onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                className="w-16 sm:w-20 h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600 hidden sm:block"
-              />
-            </div>
-
-            {/* Timestamps */}
-            <div className="text-xs font-mono text-zinc-400">
-              <span className="text-zinc-200">{formatTime(currentTime)}</span>
-              <span className="mx-1 text-zinc-600">/</span>
-              <span>{formatTime(totalDuration)}</span>
-            </div>
-          </div>
-
-          {/* Right: Episodes Drawer Button, Next Episode, Subtitles, Playback Speed, Fullscreen */}
-          <div className="flex items-center gap-2 sm:gap-4 relative">
-            {/* TV Episodes Drawer Button */}
-            {isSeries && seasonsData.length > 0 && (
-              <button
-                onClick={() => setShowEpisodesDrawer(true)}
-                title="Episode List"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700/80 text-xs font-medium transition-colors cursor-pointer"
-              >
-                <ListVideo className="h-4 w-4 text-red-500" />
-                <span className="hidden sm:inline">Episodes</span>
-              </button>
-            )}
-
-            {/* Next Episode Button */}
-            <button
-              onClick={handleNextEpisode}
-              aria-label="Next Episode"
-              title="Play Next Title"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700/80 text-xs font-medium transition-colors cursor-pointer"
-            >
-              <SkipForward className="h-3.5 w-3.5" />
-              <span>Next {isSeries ? 'Episode' : 'Title'}</span>
-            </button>
-
-            {/* Subtitles Menu */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowSubtitleMenu(!showSubtitleMenu);
-                  setShowSpeedMenu(false);
-                }}
-                aria-label="Audio & Subtitles"
-                title="Subtitles"
-                className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                  activeSubtitle !== 'Off' ? 'text-red-500' : 'text-zinc-300 hover:text-white'
-                }`}
-              >
-                <Subtitles className="h-5 w-5" />
-              </button>
-
-              {showSubtitleMenu && (
-                <div className="absolute right-0 bottom-12 w-52 rounded-xl bg-zinc-900 border border-zinc-800 shadow-2xl p-2 z-40 text-xs">
-                  <div className="font-semibold text-zinc-400 px-3 py-1.5 border-b border-zinc-800 mb-1 flex items-center justify-between">
-                    <span>Subtitles</span>
-                    <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">Sync</span>
-                  </div>
-                  {subtitles.map((sub) => (
-                    <button
-                      key={sub}
-                      onClick={() => {
-                        setActiveSubtitle(sub);
-                        setShowSubtitleMenu(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer ${
-                        activeSubtitle === sub ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      <span>{sub}</span>
-                      {activeSubtitle === sub && <Check className="h-3.5 w-3.5 text-red-500" />}
-                    </button>
-                  ))}
-
-                  {/* Audio Sync Timing Offset Calibration */}
-                  {activeSubtitle !== 'Off' && (
-                    <div className="pt-2 mt-1.5 border-t border-zinc-800 px-2 pb-1">
-                      <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-1.5">
-                        <span>Audio Sync:</span>
-                        <span className="font-mono text-zinc-200 font-semibold">
-                          {captionOffset > 0 ? `+${captionOffset}s` : `${captionOffset}s`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCaptionOffset((prev) => Math.round((prev - 0.5) * 10) / 10);
-                          }}
-                          className="flex-1 py-1 text-center rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-300 font-mono transition-colors cursor-pointer"
-                          title="Display captions 0.5s earlier"
-                        >
-                          -0.5s
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCaptionOffset(0);
-                          }}
-                          className="px-2 py-1 text-center rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-400 transition-colors cursor-pointer"
-                          title="Reset sync offset"
-                        >
-                          Reset
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCaptionOffset((prev) => Math.round((prev + 0.5) * 10) / 10);
-                          }}
-                          className="flex-1 py-1 text-center rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-300 font-mono transition-colors cursor-pointer"
-                          title="Display captions 0.5s later"
-                        >
-                          +0.5s
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Playback Speed Menu */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowSpeedMenu(!showSpeedMenu);
-                  setShowSubtitleMenu(false);
-                }}
-                aria-label="Playback Speed"
-                title="Playback Speed"
-                className="px-2 py-1 rounded bg-zinc-900/80 border border-zinc-700/80 text-xs font-mono text-zinc-200 hover:text-white transition-colors cursor-pointer"
-              >
-                {playbackSpeed}x
-              </button>
-
-              {showSpeedMenu && (
-                <div className="absolute right-0 bottom-12 w-32 rounded-xl bg-zinc-900 border border-zinc-800 shadow-2xl p-1.5 z-40 text-xs font-mono">
-                  <div className="font-sans font-semibold text-zinc-400 px-2 py-1 border-b border-zinc-800 mb-1">
-                    Speed
-                  </div>
-                  {speeds.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => handleSelectSpeed(s)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                        playbackSpeed === s ? 'bg-zinc-800 text-white font-bold' : 'text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      <span>{s}x</span>
-                      {playbackSpeed === s && <Check className="h-3 w-3 text-red-500" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Fullscreen Button */}
-            <button
-              onClick={toggleFullscreen}
-              aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-              title="Fullscreen (F)"
-              className="text-zinc-300 hover:text-white transition-colors p-1 cursor-pointer"
-            >
-              {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Episode Slide-Over Drawer in Fullscreen Player */}
-      {showEpisodesDrawer && isSeries && (
-        <div className="absolute inset-y-0 right-0 z-50 w-full sm:w-96 bg-zinc-950/95 border-l border-zinc-800 shadow-2xl backdrop-blur-xl flex flex-col animate-slideInRight">
-          {/* Drawer Header */}
-          <div className="p-4 sm:p-5 border-b border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Tv className="h-4 w-4 text-red-500" />
-              <h3 className="font-display font-bold text-base text-white">Episodes & Seasons</h3>
-            </div>
-            <button
-              onClick={() => setShowEpisodesDrawer(false)}
-              className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Season Selector Dropdown inside Player */}
-          <div className="p-4 border-b border-zinc-800 bg-zinc-900/50">
-            <div className="relative">
-              <select
-                value={currentSeasonNumber}
-                onChange={(e) => {
-                  const sNum = Number(e.target.value);
-                  setCurrentSeasonNumber(sNum);
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-semibold text-white focus:outline-none focus:border-red-500 cursor-pointer pr-8 appearance-none shadow-sm"
-              >
-                {seasonsData.map((s) => (
-                  <option key={s.season_number} value={s.season_number}>
-                    {s.name} ({s.episode_count} Episodes)
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Scrollable Episodes List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {activeSeason?.episodes.map((ep) => {
-              const isCurrentPlaying =
-                ep.episode_number === currentEpisodeNumber &&
-                activeSeason.season_number === currentSeasonNumber;
-
-              return (
-                <div
-                  key={ep.id}
-                  onClick={() => handleSelectEpisode(activeSeason.season_number, ep.episode_number, ep.name)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer group ${
-                    isCurrentPlaying
-                      ? 'bg-zinc-900 border-red-500 shadow-md shadow-red-950/30'
-                      : 'bg-zinc-950 hover:bg-zinc-900 border-zinc-800/80 hover:border-zinc-700'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`text-sm font-bold font-mono w-5 shrink-0 pt-0.5 ${
-                        isCurrentPlaying ? 'text-red-500' : 'text-zinc-500 group-hover:text-white'
-                      }`}
-                    >
-                      {ep.episode_number}
-                    </span>
-
-                    <div className="flex-1 overflow-hidden">
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <h4
-                          className={`text-xs font-semibold line-clamp-1 ${
-                            isCurrentPlaying ? 'text-white' : 'text-zinc-200 group-hover:text-white'
-                          }`}
-                        >
-                          {ep.name}
-                        </h4>
-                        <span className="text-[10px] font-mono text-zinc-400 shrink-0">
-                          {ep.runtime || '45m'}
-                        </span>
-                      </div>
-
-                      <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-                        {ep.overview}
-                      </p>
-
-                      {isCurrentPlaying && (
-                        <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-red-500 uppercase tracking-wider">
-                          <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                          <span>Now Playing</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

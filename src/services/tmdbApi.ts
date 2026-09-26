@@ -1,6 +1,14 @@
 import { MediaItem, MediaResponse, CastMember, CrewMember } from '../types/media';
 import { TMDB_BASE_URL } from '../utils/constants';
-import { MOCK_MEDIA_ITEMS, getOrGenerateSeasons, getOrGenerateCastAndCrew } from './mockData';
+import {
+  MOCK_MEDIA_ITEMS,
+  getOrGenerateSeasons,
+  getOrGenerateCastAndCrew,
+  ITEM_VIDEO_URLS,
+  DEFAULT_FALLBACK_STREAM,
+  getDefaultAudioTracks,
+  getDefaultSubtitles,
+} from './mockData';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
@@ -143,6 +151,11 @@ export async function fetchMediaDetails(id: number | string, type: 'movie' | 'tv
           genre_ids: (data.genres || []).map((g: { id: number }) => g.id),
           genres: (data.genres || []).map((g: { name: string }) => g.name),
           trailer_key: trailer?.key || found?.trailer_key || 'zSWdZVtXT7E',
+          video_url: ITEM_VIDEO_URLS[data.id] || found?.video_url || DEFAULT_FALLBACK_STREAM,
+          videoUrl: ITEM_VIDEO_URLS[data.id] || found?.videoUrl || DEFAULT_FALLBACK_STREAM,
+          audio_tracks: found?.audio_tracks || getDefaultAudioTracks(data.id, ITEM_VIDEO_URLS[data.id] || DEFAULT_FALLBACK_STREAM),
+          audioTracks: found?.audioTracks || getDefaultAudioTracks(data.id, ITEM_VIDEO_URLS[data.id] || DEFAULT_FALLBACK_STREAM),
+          subtitles: found?.subtitles || getDefaultSubtitles(data.id, data.title || data.name || 'CineStream'),
           maturity_rating: type === 'tv' ? 'TV-MA' : 'PG-13',
           match_percentage: Math.min(99, Math.round((data.vote_average || 8) * 10) + 12),
           duration: data.runtime ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m` : found?.duration,
@@ -172,6 +185,7 @@ export async function fetchMediaDetails(id: number | string, type: 'movie' | 'tv
 
   // Fallback default
   const fallbackCredits = getOrGenerateCastAndCrew(numericId || 101, 'Featured Cinema Presentation');
+  const fallbackVidUrl = ITEM_VIDEO_URLS[numericId] || DEFAULT_FALLBACK_STREAM;
   return {
     id: numericId || 101,
     title: 'Featured Cinema Presentation',
@@ -183,6 +197,11 @@ export async function fetchMediaDetails(id: number | string, type: 'movie' | 'tv
     media_type: type,
     genre_ids: [878, 28, 18],
     trailer_key: 'zSWdZVtXT7E',
+    video_url: fallbackVidUrl,
+    videoUrl: fallbackVidUrl,
+    audio_tracks: getDefaultAudioTracks(numericId || 101, fallbackVidUrl),
+    audioTracks: getDefaultAudioTracks(numericId || 101, fallbackVidUrl),
+    subtitles: getDefaultSubtitles(numericId || 101, 'Featured Cinema Presentation'),
     maturity_rating: 'PG-13',
     match_percentage: 95,
     duration: '2h 15m',
@@ -193,3 +212,31 @@ export async function fetchMediaDetails(id: number | string, type: 'movie' | 'tv
     crew_members: fallbackCredits.crew_members,
   };
 }
+
+/**
+ * Fetch YouTube trailer key for any movie or TV show ID with mock data fallback
+ */
+export const getMediaTrailerKey = async (id: string | number, type: 'movie' | 'tv' = 'movie'): Promise<string | null> => {
+  const numericId = Number(id);
+  const found = MOCK_MEDIA_ITEMS.find((item) => item.id === numericId);
+
+  if (hasApiKey) {
+    try {
+      const response = await fetch(
+        `${TMDB_BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}&language=en-US`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const trailer = data.results?.find(
+          (vid: { type: string; site: string; key: string }) => vid.type === 'Trailer' && vid.site === 'YouTube'
+        );
+        if (trailer?.key) return trailer.key;
+        if (data.results?.[0]?.key) return data.results[0].key;
+      }
+    } catch (error) {
+      console.error('Error fetching trailer key:', error);
+    }
+  }
+
+  return found?.trailer_key || 'zSWdZVtXT7E';
+};
