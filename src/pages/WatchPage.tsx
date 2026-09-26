@@ -49,7 +49,8 @@ export const WatchPage: React.FC = () => {
     let isMounted = true;
     if (id) {
       setLoading(true);
-      fetchMediaDetails(id, 'movie').then((res) => {
+      const paramType = (searchParams.get('type') as 'movie' | 'tv') || undefined;
+      fetchMediaDetails(id, paramType).then((res) => {
         if (!isMounted) return;
         setMedia(res);
         setLoading(false);

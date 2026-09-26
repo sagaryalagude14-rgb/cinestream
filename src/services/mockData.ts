@@ -244,8 +244,10 @@ export function getOrGenerateSeasons(showId: number, showTitle: string, seasonCo
 /**
  * Fallback generator for Cast & Crew when not directly specified
  */
-export function getOrGenerateCastAndCrew(mediaId: number, title?: string): { cast_members: CastMember[]; crew_members: CrewMember[] } {
-  const found = MOCK_MEDIA_ITEMS.find((m) => m.id === mediaId);
+export function getOrGenerateCastAndCrew(mediaId: number | string, title?: string): { cast_members: CastMember[]; crew_members: CrewMember[] } {
+  const targetIdStr = String(mediaId);
+  const targetIdNum = Number(mediaId);
+  const found = RAW_MOCK_ITEMS.find((m) => String(m.id) === targetIdStr || m.id === targetIdNum);
   if (found?.cast_members && found.crew_members) {
     return { cast_members: found.cast_members, crew_members: found.crew_members };
   }

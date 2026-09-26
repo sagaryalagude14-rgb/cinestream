@@ -106,13 +106,15 @@ function getSimulatedResponse(endpoint: string, params: Record<string, string | 
   };
 }
 
-export async function fetchMediaDetails(id: number | string, type: 'movie' | 'tv' = 'movie'): Promise<MediaItem> {
+export async function fetchMediaDetails(id: number | string, type?: 'movie' | 'tv'): Promise<MediaItem> {
+  const targetIdStr = String(id);
   const numericId = Number(id);
-  const found = MOCK_MEDIA_ITEMS.find((item) => item.id === numericId);
+  const found = MOCK_MEDIA_ITEMS.find((item) => String(item.id) === targetIdStr || item.id === numericId);
+  const effectiveType = type || found?.media_type || 'movie';
 
   if (hasApiKey) {
     try {
-      const url = `${TMDB_BASE_URL}/${type}/${id}?api_key=${API_KEY}&append_to_response=videos,credits`;
+      const url = `${TMDB_BASE_URL}/${effectiveType}/${id}?api_key=${API_KEY}&append_to_response=videos,credits`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -217,8 +219,9 @@ export async function fetchMediaDetails(id: number | string, type: 'movie' | 'tv
  * Fetch YouTube trailer key for any movie or TV show ID with mock data fallback
  */
 export const getMediaTrailerKey = async (id: string | number, type: 'movie' | 'tv' = 'movie'): Promise<string | null> => {
+  const targetIdStr = String(id);
   const numericId = Number(id);
-  const found = MOCK_MEDIA_ITEMS.find((item) => item.id === numericId);
+  const found = MOCK_MEDIA_ITEMS.find((item) => String(item.id) === targetIdStr || item.id === numericId);
 
   if (hasApiKey) {
     try {
