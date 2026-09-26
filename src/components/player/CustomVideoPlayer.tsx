@@ -125,29 +125,18 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
 
   const displayTitle = customTitle || (media ? getDisplayTitle(media) : 'CineStream Cinema Player');
   const trailerKey = media?.trailer_key || 'zSWdZVtXT7E';
-  const defaultVideoUrl = media?.video_url || media?.videoUrl || RELIABLE_STREAMS.default;
+  const initialVideoUrl = media?.video_url || media?.videoUrl || RELIABLE_STREAMS.default;
+  const defaultVideoUrl = initialVideoUrl;
 
-  // Reliable Fallback Stream Pool
-  const fallbackStreamPool = useMemo(() => [
-    defaultVideoUrl,
-    RELIABLE_STREAMS.default,
-    RELIABLE_STREAMS.tears,
-    RELIABLE_STREAMS.sintel,
-    RELIABLE_STREAMS.elephants,
-    RELIABLE_STREAMS.blazes,
-  ], [defaultVideoUrl]);
-
-  // Video stream state with automatic fallback recovery
-  const [activeStreamUrl, setActiveStreamUrl] = useState<string>(defaultVideoUrl);
-  const [fallbackIndex, setFallbackIndex] = useState<number>(0);
+  const [videoError, setVideoError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(initialVideoUrl);
   const [streamBuffering, setStreamBuffering] = useState<boolean>(false);
-  const [isRecoveringStream, setIsRecoveringStream] = useState<boolean>(false);
 
-  // Sync activeStreamUrl when defaultVideoUrl changes
+  // Sync currentSrc when initialVideoUrl changes
   useEffect(() => {
-    setActiveStreamUrl(defaultVideoUrl);
-    setFallbackIndex(0);
-  }, [defaultVideoUrl]);
+    setCurrentSrc(initialVideoUrl);
+    setVideoError(false);
+  }, [initialVideoUrl]);
 
   // Audio tracks list
   const availableAudioTracks: AudioTrack[] = useMemo(() => {
@@ -398,27 +387,21 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
   };
 
-  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    const mediaErr = e.currentTarget.error;
-    console.warn('CineStream Video playback error on stream:', activeStreamUrl, mediaErr?.message || mediaErr?.code);
-
-    const candidates = fallbackStreamPool.filter((url) => url !== activeStreamUrl);
-    if (fallbackIndex < candidates.length) {
-      const nextStream = candidates[fallbackIndex];
-      setFallbackIndex((prev) => prev + 1);
-      setIsRecoveringStream(true);
-      triggerToast('Stream recovered from backup CDN');
-      setActiveStreamUrl(nextStream);
-
+  const handleVideoError = () => {
+    console.warn("Primary video failed to load. Switching to reliable fallback stream.");
+    setVideoError(true);
+    // Fall back to guaranteed default MP4 stream
+    if (currentSrc !== RELIABLE_STREAMS.default) {
+      setCurrentSrc(RELIABLE_STREAMS.default);
+      triggerToast('Primary video failed to load. Switching to reliable fallback stream.');
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.load();
           videoRef.current.play().catch(() => {});
         }
-        setIsRecoveringStream(false);
-      }, 400);
+      }, 200);
     } else {
-      triggerToast('Direct stream unavailable. Switched to official cinema trailer.');
+      triggerToast('Stream unavailable. Switched to official stream presentation.');
       setPlaybackMode('trailer');
     }
   };
@@ -525,7 +508,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     if (!track) return;
     setActiveAudioTrackId(trackId);
     if (track.src) {
-      setActiveStreamUrl(track.src);
+      setCurrentSrc(track.src);
     }
     triggerToast(`Audio: ${track.language}`);
   };
@@ -621,8 +604,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           <video
             ref={videoRef}
             id="cinestream-custom-video"
-            src={activeStreamUrl}
+            src={currentSrc}
             poster={media?.backdrop_path || undefined}
+            controls={false}
             autoPlay={autoPlay}
             playsInline
             muted={isMuted}
@@ -638,7 +622,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             onWaiting={() => setStreamBuffering(true)}
             onPlaying={() => setStreamBuffering(false)}
             onCanPlay={() => setStreamBuffering(false)}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
           >
             {availableSubtitles.map((track) => (
               <track
@@ -662,13 +646,13 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           />
         )}
 
-        {/* Stream Buffering or Fallback Recovery Spinner */}
-        {(streamBuffering || isRecoveringStream) && playbackMode === 'video' && (
+        {/* Stream Buffering Spinner */}
+        {streamBuffering && playbackMode === 'video' && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 bg-black/40 backdrop-blur-[2px]">
             <div className="flex flex-col items-center gap-3">
               <div className="w-12 h-12 border-3 border-red-600 border-t-transparent rounded-full animate-spin shadow-2xl" />
               <span className="text-xs font-semibold tracking-wider text-zinc-200 uppercase bg-zinc-900/90 px-3 py-1 rounded-full border border-zinc-700 shadow-lg">
-                {isRecoveringStream ? 'Switching to Backup Stream...' : 'Buffering Stream...'}
+                Buffering Stream...
               </span>
             </div>
           </div>
@@ -1092,12 +1076,13 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 { name: 'CDN Delta', url: RELIABLE_STREAMS.elephants, label: 'Action' },
                 { name: 'CDN Epsilon', url: RELIABLE_STREAMS.blazes, label: 'High-Bitrate' },
               ].map((server) => {
-                const isCur = activeStreamUrl === server.url;
+                const isCur = currentSrc === server.url;
                 return (
                   <button
                     key={server.name}
                     onClick={() => {
-                      setActiveStreamUrl(server.url);
+                      setCurrentSrc(server.url);
+                      setVideoError(false);
                       triggerToast(`Switched to ${server.name} (${server.label})`);
                       if (videoRef.current) {
                         videoRef.current.load();
