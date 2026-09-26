@@ -392,10 +392,15 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   };
 
   const toggleMute = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
     if (videoRef.current) {
-      videoRef.current.muted = nextMuted;
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(videoRef.current.muted);
+      if (!videoRef.current.muted && videoRef.current.volume === 0) {
+        videoRef.current.volume = 0.75;
+        setVolume(0.75);
+      }
+    } else {
+      setIsMuted((prev) => !prev);
     }
   };
 
