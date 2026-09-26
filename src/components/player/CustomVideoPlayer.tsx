@@ -145,8 +145,19 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
 
   const displayTitle = customTitle || (media ? getDisplayTitle(media) : 'CineStream Cinema Player');
-  const trailerKey = media?.trailer_key || 'zSWdZVtXT7E';
-  const initialVideoUrl = media?.video_url || media?.videoUrl || RELIABLE_STREAMS.default;
+  const trailerKey = currentEpisode?.trailer_key || media?.trailer_key || 'zSWdZVtXT7E';
+  const initialVideoUrl = useMemo(() => {
+    if (currentEpisode?.video_url || currentEpisode?.videoUrl) {
+      return (currentEpisode.video_url || currentEpisode.videoUrl)!;
+    }
+    if (media?.video_url || media?.videoUrl) {
+      return (media.video_url || media.videoUrl)!;
+    }
+    if (media?.id && ITEM_VIDEO_URLS[Number(media.id)]) {
+      return ITEM_VIDEO_URLS[Number(media.id)];
+    }
+    return RELIABLE_STREAMS.default;
+  }, [media, currentEpisode]);
 
   const [currentSrc, setCurrentSrc] = useState(initialVideoUrl);
   const [videoError, setVideoError] = useState(false);

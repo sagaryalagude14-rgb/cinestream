@@ -30,22 +30,22 @@ export const STREAM_FOR_BIGGER_BLAZES = RELIABLE_STREAMS.blazes;
 export const DEFAULT_FALLBACK_STREAM = RELIABLE_STREAMS.default;
 
 export const ITEM_VIDEO_URLS: Record<number, string> = {
-  101: RELIABLE_STREAMS.tears,     // Interstellar (Sci-Fi)
-  102: RELIABLE_STREAMS.sintel,    // Cyberpunk (Anime/Action)
-  103: RELIABLE_STREAMS.elephants, // Severance (Sci-Fi/Mystery)
-  104: RELIABLE_STREAMS.tears,     // Dune: Part Two (Sci-Fi Epic)
-  105: RELIABLE_STREAMS.default,   // The Last of Us (Drama/Action)
-  106: RELIABLE_STREAMS.blazes,    // Oppenheimer (Drama/History)
-  107: RELIABLE_STREAMS.sintel,    // Stranger Things (Sci-Fi/Fantasy)
-  108: RELIABLE_STREAMS.tears,     // The Batman (Crime/Action)
-  109: RELIABLE_STREAMS.elephants, // Arcane (Animation/Fantasy)
-  110: RELIABLE_STREAMS.default,   // Succession (Drama/Business)
-  111: RELIABLE_STREAMS.tears,     // Blade Runner 2049 (Sci-Fi)
-  112: RELIABLE_STREAMS.blazes,    // Shōgun (Historical Drama)
-  113: RELIABLE_STREAMS.sintel,    // Spider-Man (Animation)
-  114: RELIABLE_STREAMS.tears,     // Fallout (Sci-Fi Action)
-  115: RELIABLE_STREAMS.default,   // Breaking Bad (Crime Drama)
-  116: RELIABLE_STREAMS.elephants, // Inception (Sci-Fi Action)
+  101: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",        // Interstellar (Sci-Fi / Space)
+  102: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",              // Cyberpunk (Anime / Action)
+  103: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",     // Severance (Sci-Fi / Mystery)
+  104: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",    // Dune: Part Two (Desert Epic)
+  105: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",   // The Last of Us (Post-Apocalyptic Survival)
+  106: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",       // Oppenheimer (Historical Drama)
+  107: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",  // Stranger Things (Supernatural Mystery)
+  108: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4", // The Batman (Dark Crime / Action)
+  109: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreet.mp4", // Arcane (Animation / Action)
+  110: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4", // Succession (Corporate High-Stakes)
+  111: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4", // Blade Runner 2049 (Neo-Noir Sci-Fi)
+  112: "https://vjs.zencdn.net/v/oceans.mp4",                                                     // Shōgun (Epic Ocean / Historical Voyage)
+  113: "https://media.w3.org/2010/05/sintel/trailer.mp4",                                          // Spider-Man (Multiverse Action)
+  114: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",      // Fallout (Wasteland Adventure)
+  115: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",    // Breaking Bad (Crime Drama)
+  116: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",        // Inception (Mind-bending Sci-Fi)
 };
 
 export function getDefaultAudioTracks(mediaId: number | string, baseVideoUrl: string): AudioTrack[] {
@@ -242,6 +242,16 @@ export function getOrGenerateSeasons(showId: number, showTitle: string, seasonCo
       const epName = s === 1 ? template.title : `S${s}E${e}: ${template.title} Part II`;
       const epDesc = s === 1 ? template.desc : `Season ${s} escalation: ${template.desc}`;
 
+      const epStreamUrl = [
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+      ][(showId + s * 10 + e) % 7];
+
       episodes.push({
         id: showId * 1000 + s * 100 + e,
         episode_number: e,
@@ -254,6 +264,8 @@ export function getOrGenerateSeasons(showId: number, showTitle: string, seasonCo
         duration_seconds: 3000,
         durationSeconds: 3000,
         vote_average: Number((8.5 + (e % 3) * 0.4).toFixed(1)),
+        video_url: epStreamUrl,
+        videoUrl: epStreamUrl,
       });
     }
 
