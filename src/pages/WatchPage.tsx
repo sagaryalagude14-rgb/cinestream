@@ -5,7 +5,7 @@ import { fetchMediaDetails } from '../services/tmdbApi';
 import { MediaItem, Season, Episode } from '../types/media';
 import { getDisplayTitle } from '../utils/constants';
 import { useWatchHistory } from '../context/WatchHistoryContext';
-import { getOrGenerateSeasons } from '../services/mockData';
+import { getOrGenerateSeasons, RELIABLE_STREAMS, getDefaultAudioTracks } from '../services/mockData';
 import { CustomVideoPlayer } from '../components/player/CustomVideoPlayer';
 
 function formatTime(secs: number): string {
@@ -52,7 +52,15 @@ export const WatchPage: React.FC = () => {
       const paramType = (searchParams.get('type') as 'movie' | 'tv') || undefined;
       fetchMediaDetails(id, paramType).then((res) => {
         if (!isMounted) return;
-        setMedia(res);
+        const safeVideoUrl = res.video_url || res.videoUrl || RELIABLE_STREAMS.default;
+        const normalizedMedia: MediaItem = {
+          ...res,
+          video_url: safeVideoUrl,
+          videoUrl: safeVideoUrl,
+          audio_tracks: res.audio_tracks || res.audioTracks || getDefaultAudioTracks(res.id, safeVideoUrl),
+          audioTracks: res.audioTracks || res.audio_tracks || getDefaultAudioTracks(res.id, safeVideoUrl),
+        };
+        setMedia(normalizedMedia);
         setLoading(false);
 
         // Check for existing saved watch progress (> 4% and < 96%)

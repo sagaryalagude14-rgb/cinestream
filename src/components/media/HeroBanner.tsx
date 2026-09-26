@@ -4,6 +4,7 @@ import { Play, Info, Plus, Check, Star, Volume2, VolumeX, Sparkles } from 'lucid
 import { MediaItem } from '../../types/media';
 import { TMDB_IMAGE_BASE_ORIGINAL, formatYear, getDisplayTitle, getGenreNames } from '../../utils/constants';
 import { useSavedMedia } from '../../context/SavedMediaContext';
+import { RELIABLE_STREAMS } from '../../services/mockData';
 
 // Import our local generated cinematic hero image asset
 import heroLocalImage from '../../assets/images/hero_stellar_odyssey_1790351837024.jpg';
@@ -134,12 +135,20 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ items, onOpenModal }) =>
         <video
           ref={videoRef}
           key={`hero-ambient-stream-${currentItem.id}`}
-          src={currentItem.video_url || currentItem.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'}
+          src={currentItem.video_url || currentItem.videoUrl || RELIABLE_STREAMS.tears}
           autoPlay
           muted={isMuted}
           loop
           playsInline
           onCanPlay={() => setIsVideoReady(true)}
+          onError={(e) => {
+            const videoElem = e.currentTarget;
+            if (videoElem.src !== RELIABLE_STREAMS.default) {
+              videoElem.src = RELIABLE_STREAMS.default;
+              videoElem.load();
+              videoElem.play().catch(() => {});
+            }
+          }}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 pointer-events-none ${
             isVideoReady && !isTransitioning ? 'opacity-85' : 'opacity-0'
           }`}

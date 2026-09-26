@@ -1,27 +1,38 @@
 import { MediaItem, Season, CastMember, CrewMember, AudioTrack, SubtitleTrack } from '../types/media';
 
-export const STREAM_BIG_BUCK_BUNNY = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-export const STREAM_SINTEL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4';
-export const STREAM_TEARS_OF_STEEL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4';
-export const DEFAULT_FALLBACK_STREAM = STREAM_BIG_BUCK_BUNNY;
+// Verified, high-availability public test streams:
+export const RELIABLE_STREAMS = {
+  default: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  sintel: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+  tears: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+  elephants: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+  blazes: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+};
+
+export const STREAM_BIG_BUCK_BUNNY = RELIABLE_STREAMS.default;
+export const STREAM_SINTEL = RELIABLE_STREAMS.sintel;
+export const STREAM_TEARS_OF_STEEL = RELIABLE_STREAMS.tears;
+export const STREAM_ELEPHANTS_DREAM = RELIABLE_STREAMS.elephants;
+export const STREAM_FOR_BIGGER_BLAZES = RELIABLE_STREAMS.blazes;
+export const DEFAULT_FALLBACK_STREAM = RELIABLE_STREAMS.default;
 
 export const ITEM_VIDEO_URLS: Record<number, string> = {
-  101: STREAM_TEARS_OF_STEEL, // Interstellar (Sci-Fi)
-  102: STREAM_SINTEL,         // Cyberpunk (Anime/Action)
-  103: STREAM_TEARS_OF_STEEL, // Severance (Sci-Fi/Mystery)
-  104: STREAM_TEARS_OF_STEEL, // Dune: Part Two (Sci-Fi Epic)
-  105: STREAM_BIG_BUCK_BUNNY, // The Last of Us (Drama/Action)
-  106: STREAM_TEARS_OF_STEEL, // Oppenheimer (Drama/History)
-  107: STREAM_SINTEL,         // Stranger Things (Sci-Fi/Fantasy)
-  108: STREAM_TEARS_OF_STEEL, // The Batman (Crime/Action)
-  109: STREAM_SINTEL,         // Arcane (Animation/Fantasy)
-  110: STREAM_BIG_BUCK_BUNNY, // Succession (Drama/Business)
-  111: STREAM_TEARS_OF_STEEL, // Blade Runner 2049 (Sci-Fi)
-  112: STREAM_BIG_BUCK_BUNNY, // Shōgun (Historical Drama)
-  113: STREAM_SINTEL,         // Spider-Man (Animation)
-  114: STREAM_TEARS_OF_STEEL, // Fallout (Sci-Fi Action)
-  115: STREAM_BIG_BUCK_BUNNY, // Breaking Bad (Crime Drama)
-  116: STREAM_TEARS_OF_STEEL, // Inception (Sci-Fi Action)
+  101: RELIABLE_STREAMS.tears,     // Interstellar (Sci-Fi)
+  102: RELIABLE_STREAMS.sintel,    // Cyberpunk (Anime/Action)
+  103: RELIABLE_STREAMS.elephants, // Severance (Sci-Fi/Mystery)
+  104: RELIABLE_STREAMS.tears,     // Dune: Part Two (Sci-Fi Epic)
+  105: RELIABLE_STREAMS.default,   // The Last of Us (Drama/Action)
+  106: RELIABLE_STREAMS.blazes,    // Oppenheimer (Drama/History)
+  107: RELIABLE_STREAMS.sintel,    // Stranger Things (Sci-Fi/Fantasy)
+  108: RELIABLE_STREAMS.tears,     // The Batman (Crime/Action)
+  109: RELIABLE_STREAMS.elephants, // Arcane (Animation/Fantasy)
+  110: RELIABLE_STREAMS.default,   // Succession (Drama/Business)
+  111: RELIABLE_STREAMS.tears,     // Blade Runner 2049 (Sci-Fi)
+  112: RELIABLE_STREAMS.blazes,    // Shōgun (Historical Drama)
+  113: RELIABLE_STREAMS.sintel,    // Spider-Man (Animation)
+  114: RELIABLE_STREAMS.tears,     // Fallout (Sci-Fi Action)
+  115: RELIABLE_STREAMS.default,   // Breaking Bad (Crime Drama)
+  116: RELIABLE_STREAMS.elephants, // Inception (Sci-Fi Action)
 };
 
 export function getDefaultAudioTracks(mediaId: number | string, baseVideoUrl: string): AudioTrack[] {
