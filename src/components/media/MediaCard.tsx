@@ -5,6 +5,7 @@ import { MediaItem } from '../../types/media';
 import { TMDB_IMAGE_BASE_W500, formatYear, getDisplayTitle, getGenreNames } from '../../utils/constants';
 import { useSavedMedia } from '../../context/SavedMediaContext';
 import { useWatchHistory } from '../../context/WatchHistoryContext';
+import { formatRemainingTime } from './ContinueWatchingRow';
 
 interface MediaCardProps {
   item: MediaItem;
@@ -42,13 +43,16 @@ export const MediaCard: React.FC<MediaCardProps> = ({
       ? Math.min(100, Math.max(1, Math.round((progress.currentTime / progress.duration) * 100)))
       : 0;
 
-  const remainingMinutes =
+  const remainingTimeLabel =
     progress && progress.duration > progress.currentTime
-      ? Math.ceil((progress.duration - progress.currentTime) / 60)
-      : 0;
+      ? formatRemainingTime(progress.currentTime, progress.duration)
+      : null;
 
-  // Determine image URL
-  const rawPath = aspectRatio === 'landscape' ? item.backdrop_path || item.poster_path : item.poster_path || item.backdrop_path;
+  // Determine image URL prioritizing explicit high-res posterUrl/backdropUrl
+  const rawPath = aspectRatio === 'landscape'
+    ? item.backdropUrl || item.backdrop_path || item.posterUrl || item.poster_path
+    : item.posterUrl || item.poster_path || item.backdropUrl || item.backdrop_path;
+
   const imageUrl = rawPath
     ? rawPath.startsWith('http') || rawPath.startsWith('/src/assets')
       ? rawPath
@@ -114,7 +118,15 @@ export const MediaCard: React.FC<MediaCardProps> = ({
             loading="lazy"
             referrerPolicy="no-referrer"
             onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              const fallback = item.posterUrl || item.backdropUrl || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=800&q=80';
+              if (target.src !== fallback) {
+                target.src = fallback;
+              } else {
+                setImageError(true);
+              }
+            }}
             className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
@@ -150,14 +162,10 @@ export const MediaCard: React.FC<MediaCardProps> = ({
         </div>
 
         {/* Small overlay timestamp badge on hover */}
-        {remainingMinutes > 0 && (
+        {remainingTimeLabel && (
           <div className="absolute bottom-2.5 left-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 px-2 py-0.5 rounded bg-black/85 backdrop-blur-md border border-zinc-700/60 text-[10px] font-mono font-medium text-white shadow-md">
             <Clock className="h-3 w-3 text-red-500" />
-            <span>
-              {remainingMinutes > 60
-                ? `${Math.floor(remainingMinutes / 60)}h ${remainingMinutes % 60}m remaining`
-                : `${remainingMinutes}m remaining`}
-            </span>
+            <span>{remainingTimeLabel}</span>
           </div>
         )}
 
@@ -183,9 +191,9 @@ export const MediaCard: React.FC<MediaCardProps> = ({
 
           {/* Clean metadata line without pill enclosures */}
           <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 mt-1 font-normal">
-            {remainingMinutes > 0 ? (
+            {remainingTimeLabel ? (
               <span className="text-red-400 font-medium">
-                {remainingMinutes}m remaining
+                {remainingTimeLabel}
               </span>
             ) : (
               <span className="text-emerald-400 font-medium">

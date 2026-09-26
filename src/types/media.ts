@@ -72,6 +72,10 @@ export interface MediaItem {
   // Extended fields for rich modal & watch experiences
   video_url?: string;
   videoUrl?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  duration_seconds?: number;
+  durationSeconds?: number;
   audio_tracks?: AudioTrack[];
   audioTracks?: AudioTrack[];
   subtitles?: SubtitleTrack[];

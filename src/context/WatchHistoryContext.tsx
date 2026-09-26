@@ -26,22 +26,22 @@ const INITIAL_DEMO_HISTORY: WatchProgress[] = [
   {
     mediaId: '101', // Interstellar
     media: MOCK_MEDIA_ITEMS.find((m) => m.id === 101)!,
-    currentTime: 3650, // ~1h 00m
-    duration: 10140, // 2h 49m
+    currentTime: 3600, // 1h in
+    duration: 7200, // 2h 00m
     updatedAt: Date.now() - 1000 * 60 * 45, // 45 mins ago
   },
   {
     mediaId: '102', // Cyberpunk
     media: MOCK_MEDIA_ITEMS.find((m) => m.id === 102)!,
-    currentTime: 890, // ~14m 50s
-    duration: 1500, // 25m
+    currentTime: 1200, // 20m in
+    duration: 3000, // 50m
     updatedAt: Date.now() - 1000 * 60 * 180, // 3 hours ago
   },
   {
     mediaId: '104', // Dune Part Two
     media: MOCK_MEDIA_ITEMS.find((m) => m.id === 104)!,
-    currentTime: 4200, // ~1h 10m
-    duration: 9960, // 2h 46m
+    currentTime: 3000, // 50m in
+    duration: 7200, // 2h 00m
     updatedAt: Date.now() - 1000 * 60 * 60 * 24, // 1 day ago
   },
 ].filter((item) => item.media !== undefined);

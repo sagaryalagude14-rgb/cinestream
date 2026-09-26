@@ -85,9 +85,16 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   onPreviousEpisode,
 }) => {
   // Video & audio playback states
+  const expectedTotalDuration = useMemo(() => {
+    if (media?.duration_seconds && media.duration_seconds > 0) return media.duration_seconds;
+    if (media?.durationSeconds && media.durationSeconds > 0) return media.durationSeconds;
+    return isSeries ? 3000 : 7200;
+  }, [media, isSeries]);
+
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [currentTime, setCurrentTime] = useState(initialTime);
-  const [totalDuration, setTotalDuration] = useState(120);
+  const [totalDuration, setTotalDuration] = useState<number>(expectedTotalDuration);
+  const virtualOffsetRef = useRef<number>(0);
   const [volume, setVolume] = useState(1.0);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
@@ -272,13 +279,17 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     toastTimeoutRef.current = setTimeout(() => setActionToast(null), 2500);
   };
 
-  // Direct timeupdate handler from HTML5 video element
+  // Direct timeupdate handler from HTML5 video element with virtual full duration mapping
   const handleTimeUpdate = useCallback(
     (e: React.SyntheticEvent<HTMLVideoElement>) => {
-      const time = e.currentTarget.currentTime;
-      setCurrentTime(time);
+      const rawTime = e.currentTarget.currentTime;
+      const effectiveTime = Math.min(
+        totalDuration,
+        Math.round(rawTime + virtualOffsetRef.current)
+      );
+      setCurrentTime(effectiveTime);
       if (onTimeUpdate) {
-        onTimeUpdate(time, e.currentTarget.duration || totalDuration);
+        onTimeUpdate(effectiveTime, totalDuration);
       }
 
       // Live cue sync
@@ -287,7 +298,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         return;
       }
 
-      const effectiveTime = Math.max(0, time + captionOffset);
+      const cueEffectiveTime = Math.max(0, rawTime + captionOffset);
       const cues = selectedSubtitleTrack.cues;
       if (!cues || cues.length === 0) {
         setCurrentSubtitleText(null);
@@ -295,7 +306,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       }
 
       const maxEnd = cues[cues.length - 1]?.end || 120;
-      const lookupTime = effectiveTime <= maxEnd ? effectiveTime : effectiveTime % maxEnd;
+      const lookupTime = cueEffectiveTime <= maxEnd ? cueEffectiveTime : cueEffectiveTime % maxEnd;
       const matchedCue = cues.find((c) => lookupTime >= c.start && lookupTime <= c.end);
       setCurrentSubtitleText(matchedCue ? matchedCue.text : null);
     },
@@ -308,7 +319,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       setCurrentSubtitleText(null);
       return;
     }
-    const targetTime = videoRef.current ? videoRef.current.currentTime : currentTime;
+    const targetTime = videoRef.current ? videoRef.current.currentTime : (currentTime % 120);
     const effectiveTime = Math.max(0, targetTime + captionOffset);
     const cues = selectedSubtitleTrack.cues;
     if (!cues || cues.length === 0) {
@@ -322,18 +333,45 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   }, [selectedSubtitleTrack, activeSubtitleTrackId, captionOffset, currentTime]);
 
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    const dur = e.currentTarget.duration;
-    if (dur && !isNaN(dur) && dur > 0) {
-      setTotalDuration(Math.round(dur));
-    }
+    const rawDur = e.currentTarget.duration;
+    const finalDuration = expectedTotalDuration > (rawDur || 0) ? expectedTotalDuration : Math.round(rawDur || 7200);
+    setTotalDuration(finalDuration);
+
     if (initialTime > 0) {
-      e.currentTarget.currentTime = initialTime;
+      if (rawDur && rawDur > 0 && initialTime >= rawDur) {
+        const streamSeek = initialTime % rawDur;
+        virtualOffsetRef.current = initialTime - streamSeek;
+        e.currentTarget.currentTime = streamSeek;
+      } else {
+        virtualOffsetRef.current = 0;
+        e.currentTarget.currentTime = initialTime;
+      }
+      setCurrentTime(initialTime);
+    } else {
+      virtualOffsetRef.current = 0;
     }
+
     e.currentTarget.playbackRate = playbackSpeed;
     e.currentTarget.volume = volume;
     e.currentTarget.muted = isMuted;
     if (autoPlay) {
       e.currentTarget.play().catch(() => {});
+    }
+  };
+
+  const handleVideoEnded = () => {
+    if (videoRef.current && currentTime < totalDuration - 10) {
+      // Loop the stream preview seamlessly while keeping track of virtual time
+      const streamDur = videoRef.current.duration || 600;
+      virtualOffsetRef.current += streamDur;
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    } else {
+      setIsPlaying(false);
+      if (isSeries && onNextEpisode) {
+        triggerToast('Playing next episode...');
+        setTimeout(() => onNextEpisode(), 1500);
+      }
     }
   };
 
@@ -372,10 +410,22 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   };
 
   const seekRelative = (deltaSeconds: number) => {
-    if (!videoRef.current) return;
-    const nextTime = Math.max(0, Math.min(totalDuration, videoRef.current.currentTime + deltaSeconds));
-    videoRef.current.currentTime = nextTime;
+    const nextTime = Math.max(0, Math.min(totalDuration, currentTime + deltaSeconds));
     setCurrentTime(nextTime);
+    if (videoRef.current) {
+      const rawDur = videoRef.current.duration;
+      if (rawDur && rawDur > 0 && nextTime >= rawDur) {
+        const streamSeek = nextTime % rawDur;
+        virtualOffsetRef.current = nextTime - streamSeek;
+        videoRef.current.currentTime = streamSeek;
+      } else {
+        virtualOffsetRef.current = 0;
+        videoRef.current.currentTime = nextTime;
+      }
+    }
+    if (onTimeUpdate) {
+      onTimeUpdate(nextTime, totalDuration);
+    }
     triggerToast(deltaSeconds > 0 ? `+${deltaSeconds}s` : `${deltaSeconds}s`);
   };
 
@@ -383,7 +433,18 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const newTime = Number(e.target.value);
     setCurrentTime(newTime);
     if (videoRef.current) {
-      videoRef.current.currentTime = newTime;
+      const rawDur = videoRef.current.duration;
+      if (rawDur && rawDur > 0 && newTime >= rawDur) {
+        const streamSeek = newTime % rawDur;
+        virtualOffsetRef.current = newTime - streamSeek;
+        videoRef.current.currentTime = streamSeek;
+      } else {
+        virtualOffsetRef.current = 0;
+        videoRef.current.currentTime = newTime;
+      }
+    }
+    if (onTimeUpdate) {
+      onTimeUpdate(newTime, totalDuration);
     }
   };
 
@@ -513,10 +574,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             onLoadedMetadata={handleLoadedMetadata}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
-            onEnded={() => {
-              setIsPlaying(false);
-              if (onNextEpisode) onNextEpisode();
-            }}
+            onEnded={handleVideoEnded}
             crossOrigin="anonymous"
             className="w-full h-full object-cover"
           >

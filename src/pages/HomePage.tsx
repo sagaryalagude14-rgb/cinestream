@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { HeroBanner } from '../components/media/HeroBanner';
 import { MediaRow } from '../components/media/MediaRow';
+import { ContinueWatchingRow } from '../components/media/ContinueWatchingRow';
 import { VideoPreviewModal } from '../components/media/VideoPreviewModal';
 import { CategoryPills } from '../components/filter/CategoryPills';
 import { useFetchMedia } from '../hooks/useFetchMedia';
@@ -96,12 +97,9 @@ export const HomePage: React.FC = () => {
         {/* Dedicated Continue Watching Row (Directly below HeroBanner, shown ONLY when watchHistory has 1+ items) */}
         {continueWatchingItems.length > 0 && (
           <div className="animate-fadeIn">
-            <MediaRow
-              title="Continue Watching"
+            <ContinueWatchingRow
               items={continueWatchingItems}
-              aspectRatio="landscape"
               onSelectMedia={openModal}
-              showRemoveFromHistory={true}
               onRemoveFromHistory={(id) => removeFromHistory(id)}
             />
           </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Info, Plus, Check, Star, Volume2, VolumeX } from 'lucide-react';
+import { Play, Info, Plus, Check, Star, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { MediaItem } from '../../types/media';
 import { TMDB_IMAGE_BASE_ORIGINAL, formatYear, getDisplayTitle, getGenreNames } from '../../utils/constants';
 import { useSavedMedia } from '../../context/SavedMediaContext';
@@ -17,26 +17,58 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ items, onOpenModal }) =>
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [soundToast, setSoundToast] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
   const { isSaved, toggleSaved } = useSavedMedia();
 
   const featuredItems = items.slice(0, 5);
   const currentItem = featuredItems[currentIndex] || items[0];
 
-  // Auto-rotate every 8 seconds
+  // Auto-rotate every 10 seconds (giving time for trailer/stream previews)
   useEffect(() => {
     if (featuredItems.length <= 1) return;
 
     const timer = setInterval(() => {
       setIsTransitioning(true);
+      setIsVideoReady(false);
       setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % featuredItems.length);
         setIsTransitioning(false);
       }, 300);
-    }, 8000);
+    }, 10000);
 
     return () => clearInterval(timer);
   }, [featuredItems.length, currentIndex]);
+
+  // Sync mute state to video element
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      if (!isMuted) {
+        videoRef.current.volume = 0.75;
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [isMuted, currentIndex]);
+
+  const handleToggleSound = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = nextMuted;
+      if (!nextMuted) {
+        videoRef.current.volume = 0.75;
+        videoRef.current.play().catch(() => {});
+      }
+    }
+    const msg = nextMuted ? 'Sound Muted' : 'Sound On (Cinematic Audio)';
+    setSoundToast(msg);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setSoundToast(null), 2500);
+  };
 
   if (!currentItem) {
     return (
@@ -98,10 +130,25 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ items, onOpenModal }) =>
           }}
         />
 
+        {/* Cinematic Ambient Background Video Stream with Real Audio Engine */}
+        <video
+          ref={videoRef}
+          key={`hero-ambient-stream-${currentItem.id}`}
+          src={currentItem.video_url || currentItem.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'}
+          autoPlay
+          muted={isMuted}
+          loop
+          playsInline
+          onCanPlay={() => setIsVideoReady(true)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 pointer-events-none ${
+            isVideoReady && !isTransitioning ? 'opacity-85' : 'opacity-0'
+          }`}
+        />
+
         {/* Sophisticated Multi-Stage Cinematic Scrims */}
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/70 to-transparent w-full md:w-3/4" />
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/70 to-transparent w-full md:w-3/4 pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent pointer-events-none" />
       </div>
 
       {/* Hero Content Overlay */}
@@ -183,8 +230,16 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ items, onOpenModal }) =>
           </div>
         </div>
 
+        {/* Sound Feedback Toast */}
+        {soundToast && (
+          <div className="absolute bottom-18 right-4 sm:right-6 lg:right-8 z-30 flex items-center gap-2 bg-zinc-900/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-700/80 shadow-2xl backdrop-blur-md animate-in fade-in duration-200">
+            <Sparkles className="w-3.5 h-3.5 text-red-500" />
+            <span>{soundToast}</span>
+          </div>
+        )}
+
         {/* Bottom controls: Carousel Indicators + Sound Toggle */}
-        <div className="absolute bottom-6 right-4 sm:right-6 lg:right-8 flex items-center gap-4 z-20">
+        <div className="absolute bottom-6 right-4 sm:right-6 lg:right-8 flex items-center gap-3 sm:gap-4 z-20">
           {/* Thumbnails / Indicators */}
           <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md p-1.5 rounded-full border border-zinc-800/80">
             {featuredItems.map((item, idx) => (
@@ -192,20 +247,36 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ items, onOpenModal }) =>
                 key={item.id}
                 onClick={() => handleSelectIndex(idx)}
                 aria-label={`Jump to spotlight ${idx + 1}`}
-                className={`h-2 transition-all duration-300 rounded-full ${
+                className={`h-2 transition-all duration-300 rounded-full cursor-pointer ${
                   idx === currentIndex ? 'w-6 bg-red-600' : 'w-2 bg-zinc-600 hover:bg-zinc-400'
                 }`}
               />
             ))}
           </div>
 
-          {/* Sound Toggle Indicator */}
+          {/* Sound Toggle Button with Equalizer Visualizer */}
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={handleToggleSound}
             aria-label={isMuted ? 'Unmute preview sound' : 'Mute preview sound'}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md border border-zinc-700 text-zinc-300 hover:text-white transition-colors"
+            title={isMuted ? 'Unmute preview sound' : 'Mute sound'}
+            className={`flex items-center gap-2 h-9 px-2.5 rounded-full backdrop-blur-md border transition-all cursor-pointer ${
+              isMuted
+                ? 'bg-black/60 hover:bg-black/90 border-zinc-700 text-zinc-300 hover:text-white'
+                : 'bg-red-600/90 hover:bg-red-600 border-red-500 text-white shadow-lg shadow-red-950/50'
+            }`}
           >
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4 text-red-400" />}
+            {isMuted ? (
+              <VolumeX className="h-4 w-4" />
+            ) : (
+              <>
+                <Volume2 className="h-4 w-4 text-white" />
+                <span className="flex items-end gap-0.5 h-3 pr-0.5">
+                  <span className="w-0.5 h-2 bg-white rounded-full animate-pulse" />
+                  <span className="w-0.5 h-3 bg-white rounded-full animate-pulse [animation-delay:150ms]" />
+                  <span className="w-0.5 h-1.5 bg-white rounded-full animate-pulse [animation-delay:300ms]" />
+                </span>
+              </>
+            )}
           </button>
         </div>
       </div>
